@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Dashboard local para analizar la planificación diaria de transporte de Warehousing Chile.">
+  <title>Dashboard de Transporte | Warehousing</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <img src="assets/images/logo-warehousing.png" alt="Warehousing Operador Logístico" class="brand-logo">
+        <div>
+          <h1>Dashboard de Transporte</h1>
+          <p>Control operativo, comercial y financiero</p>
+        </div>
+      </div>
+
+      <div class="file-status" aria-live="polite">
+        <span class="status-dot" id="fileStatusDot"></span>
+        <div>
+          <strong id="loadedFileName">Sin archivo cargado</strong>
+          <small id="lastUpdateText">Carga la planilla para comenzar</small>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <label class="btn btn-primary" for="fileInput" title="Cargar o reemplazar archivo Excel">
+          <span aria-hidden="true">↥</span> Cargar Excel
+          <input id="fileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        </label>
+        <button class="btn btn-secondary" id="resetFiltersButton" type="button" disabled>
+          <span aria-hidden="true">↺</span> Restablecer filtros
+        </button>
+        <button class="btn btn-secondary" id="exportGlobalButton" type="button" disabled>
+          <span aria-hidden="true">⇩</span> Exportar
+        </button>
+        <button class="btn btn-secondary" id="qualityButton" type="button" disabled>
+          <span aria-hidden="true">✓</span> Calidad de datos
+        </button>
+      </div>
+    </header>
+
+    <div class="privacy-banner">
+      <span aria-hidden="true">🔒</span>
+      <strong>Privacidad:</strong> Los datos se procesan localmente y no se cargan a servidores externos.
+    </div>
+
+    <div class="main-layout">
+      <aside class="sidebar" aria-label="Vistas del dashboard">
+        <button class="nav-item active" data-view="summary"><span>▦</span> Resumen Ejecutivo</button>
+        <button class="nav-item" data-view="services"><span>▤</span> Servicios</button>
+        <button class="nav-item" data-view="clients"><span>◉</span> Clientes</button>
+        <button class="nav-item" data-view="carriers"><span>▰</span> Empresas de Transporte</button>
+        <button class="nav-item" data-view="geography"><span>⌖</span> Distribución Geográfica</button>
+        <button class="nav-item" data-view="finance"><span>$</span> Costos y Ventas</button>
+        <button class="nav-item" data-view="detail"><span>≣</span> Detalle de Registros</button>
+        <div class="sidebar-footer">
+          <small>Hoja esperada</small>
+          <strong>Plan_Transporte</strong>
+          <span id="processedRowsBadge">0 registros</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <section class="filters-panel" aria-label="Filtros interactivos">
+          <div class="filter-field">
+            <label for="filterYear">Año</label>
+            <select id="filterYear" disabled><option value="">Todos</option></select>
+          </div>
+          <div class="filter-field">
+            <label for="filterMonth">Mes</label>
+            <select id="filterMonth" disabled>
+              <option value="">Todos</option>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div class="filter-field date-field">
+            <label for="filterDateFrom">Desde</label>
+            <input id="filterDateFrom" type="date" disabled>
+          </div>
+          <div class="filter-field date-field">
+            <label for="filterDateTo">Hasta</label>
+            <input id="filterDateTo" type="date" disabled>
+          </div>
+          <div class="filter-field wide">
+            <label for="filterClient">Cliente</label>
+            <select id="filterClient" disabled><option value="">Todos</option></select>
+          </div>
+          <div class="filter-field wide">
+            <label for="filterCarrier">Empresa transportista</label>
+            <select id="filterCarrier" disabled><option value="">Todas</option></select>
+          </div>
+          <div class="filter-field">
+            <label for="filterStatus">Estado</label>
+            <select id="filterStatus" disabled><option value="">Todos</option></select>
+          </div>
+          <div class="filter-field">
+            <label for="filterDestination">Comuna / destino</label>
+            <select id="filterDestination" disabled><option value="">Todos</option></select>
+          </div>
+          <div class="filter-field">
+            <label for="filterRegion">Región</label>
+            <select id="filterRegion" disabled><option value="">Todas</option></select>
+          </div>
+          <div class="filter-field missing-field" title="La planilla no contiene una columna identificable de tipo de servicio.">
+            <label for="filterServiceType">Tipo de servicio</label>
+            <select id="filterServiceType" disabled><option>No disponible</option></select>
+          </div>
+          <div class="filter-field missing-field" title="La planilla no contiene una columna de comuna de origen.">
+            <label for="filterOrigin">Comuna de origen</label>
+            <select id="filterOrigin" disabled><option>No disponible</option></select>
+          </div>
+          <div class="filter-field missing-field" title="La planilla no contiene una columna identificable de centro o bodega.">
+            <label for="filterCenter">Centro / bodega</label>
+            <select id="filterCenter" disabled><option>No disponible</option></select>
+          </div>
+          <button class="btn btn-accent compact" id="resetFiltersInlineButton" type="button" disabled>Restablecer filtros</button>
+        </section>
+
+        <section id="emptyState" class="empty-state">
+          <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Arrastra o selecciona el archivo Excel">
+            <div class="drop-icon">▣</div>
+            <h2>Carga la planilla de transporte</h2>
+            <p>Arrastra aquí el archivo <strong>Planilla planificación diaria Transporte_OV.xlsx</strong> o selecciónalo desde tu computador.</p>
+            <label class="btn btn-primary" for="fileInput">Seleccionar archivo Excel</label>
+            <small>La aplicación buscará automáticamente la hoja <strong>Plan_Transporte</strong>.</small>
+          </div>
+          <div id="autoLoadMessage" class="auto-load-message">Buscando automáticamente una planilla válida en la carpeta data…</div>
+        </section>
+
+        <div id="dashboardContent" hidden>
+          <section id="view-summary" class="dashboard-view active" data-view-panel="summary">
+            <div class="section-heading">
+              <div><span class="eyebrow">Vista principal</span><h2>Resumen Ejecutivo</h2></div>
+              <div class="period-label" id="summaryPeriodLabel"></div>
+            </div>
+            <div id="summaryKpis" class="kpi-grid"></div>
+
+            <div class="content-grid two-columns">
+              <article class="card chart-card">
+                <div class="card-header"><div><h3>Ventas, costos, utilidad y margen</h3><p>Evolución mensual del período seleccionado</p></div><button class="icon-btn" data-download-chart="financialSummaryChart" title="Descargar gráfico">⇩</button></div>
+                <canvas id="financialSummaryChart" class="chart-canvas" height="330"></canvas>
+              </article>
+              <article class="card chart-card">
+                <div class="card-header"><div><h3>Servicios y pallets por mes</h3><p>Cantidad de servicios únicos y pallets entregados</p></div><button class="icon-btn" data-download-chart="servicePalletChart" title="Descargar gráfico">⇩</button></div>
+                <canvas id="servicePalletChart" class="chart-canvas" height="330"></canvas>
+              </article>
+            </div>
+
+            <div class="content-grid two-columns">
+              <article class="card">
+                <div class="card-header"><div><h3>Comparación mensual</h3><p>Período actual frente al año anterior</p></div></div>
+                <div id="monthlyComparisonTable" class="table-wrap compact-table"></div>
+              </article>
+              <article class="card chart-card">
+                <div class="card-header"><div><h3>Variación anual de ventas</h3><p>Mismo mes del año actual y anterior</p></div><button class="icon-btn" data-download-chart="annualSalesChart" title="Descargar gráfico">⇩</button></div>
+                <canvas id="annualSalesChart" class="chart-canvas" height="330"></canvas>
+              </article>
+            </div>
+
+            <div class="content-grid three-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Ranking de clientes</h3><p>Por venta total</p></div><button class="icon-btn" data-download-chart="topClientsChart" title="Descargar gráfico">⇩</button></div><canvas id="topClientsChart" class="chart-canvas" height="360"></canvas></article>
+              <article class="card"><div class="card-header"><div><h3>Empresas transportistas</h3><p>Participación y rentabilidad</p></div></div><div id="topCarriersTable" class="table-wrap"></div></article>
+              <article class="card"><div class="card-header"><div><h3>Registros recientes</h3><p>Últimos servicios según fecha de transporte</p></div></div><div id="recentRecordsTable" class="table-wrap"></div></article>
+            </div>
+          </section>
+
+          <section id="view-services" class="dashboard-view" data-view-panel="services">
+            <div class="section-heading"><div><span class="eyebrow">Control operacional</span><h2>Servicios</h2></div></div>
+            <div id="serviceKpis" class="kpi-grid"></div>
+            <div class="content-grid two-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Servicios y pallets</h3><p>Evolución mensual</p></div><button class="icon-btn" data-download-chart="servicesTrendChart">⇩</button></div><canvas id="servicesTrendChart" class="chart-canvas" height="330"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Estado de los servicios</h3><p>Entregados, rechazados y cancelados</p></div><button class="icon-btn" data-download-chart="statusChart">⇩</button></div><canvas id="statusChart" class="chart-canvas" height="330"></canvas></article>
+            </div>
+            <div class="content-grid two-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Principales destinos</h3><p>Comunas o ciudades con más servicios</p></div><button class="icon-btn" data-download-chart="destinationsChart">⇩</button></div><canvas id="destinationsChart" class="chart-canvas" height="390"></canvas></article>
+              <article class="card"><div class="card-header"><div><h3>Alertas operativas</h3><p>Registros que requieren revisión</p></div></div><div id="serviceAlertsPanel"></div></article>
+            </div>
+          </section>
+
+          <section id="view-clients" class="dashboard-view" data-view-panel="clients">
+            <div class="section-heading"><div><span class="eyebrow">Análisis comercial</span><h2>Clientes</h2></div></div>
+            <div id="clientKpis" class="kpi-grid"></div>
+            <div class="content-grid two-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Ranking por ventas</h3><p>Haz clic para filtrar un cliente</p></div><button class="icon-btn" data-download-chart="clientSalesChart">⇩</button></div><canvas id="clientSalesChart" class="chart-canvas" height="410"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Ranking por utilidad</h3><p>Rentabilidad acumulada por cliente</p></div><button class="icon-btn" data-download-chart="clientProfitChart">⇩</button></div><canvas id="clientProfitChart" class="chart-canvas" height="410"></canvas></article>
+            </div>
+            <article class="card chart-card"><div class="card-header"><div><h3>Evolución mensual del cliente</h3><p id="clientEvolutionLabel">Cliente con mayor venta del período</p></div><button class="icon-btn" data-download-chart="clientEvolutionChart">⇩</button></div><canvas id="clientEvolutionChart" class="chart-canvas" height="330"></canvas></article>
+            <article class="card"><div class="card-header"><div><h3>Detalle consolidado de clientes</h3><p>Servicios, pallets, venta, costo, utilidad y margen</p></div></div><div id="clientDetailTable" class="table-wrap"></div></article>
+          </section>
+
+          <section id="view-carriers" class="dashboard-view" data-view-panel="carriers">
+            <div class="section-heading"><div><span class="eyebrow">Proveedores de transporte</span><h2>Empresas de Transporte</h2></div></div>
+            <div id="carrierKpis" class="kpi-grid"></div>
+            <div class="content-grid two-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Servicios por transportista</h3><p>Haz clic para analizar una empresa</p></div><button class="icon-btn" data-download-chart="carrierServicesChart">⇩</button></div><canvas id="carrierServicesChart" class="chart-canvas" height="410"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Costo por transportista</h3><p>Participación en el costo total</p></div><button class="icon-btn" data-download-chart="carrierCostChart">⇩</button></div><canvas id="carrierCostChart" class="chart-canvas" height="410"></canvas></article>
+            </div>
+            <article class="card chart-card"><div class="card-header"><div><h3>Evolución mensual del transportista</h3><p id="carrierEvolutionLabel">Empresa con más servicios del período</p></div><button class="icon-btn" data-download-chart="carrierEvolutionChart">⇩</button></div><canvas id="carrierEvolutionChart" class="chart-canvas" height="330"></canvas></article>
+            <article class="card"><div class="card-header"><div><h3>Detalle consolidado de transportistas</h3><p>Servicios, costos, venta asociada, utilidad y margen</p></div></div><div id="carrierDetailTable" class="table-wrap"></div></article>
+          </section>
+
+          <section id="view-geography" class="dashboard-view" data-view-panel="geography">
+            <div class="section-heading"><div><span class="eyebrow">Cobertura</span><h2>Distribución Geográfica</h2></div></div>
+            <div class="data-note warning"><strong>Dato disponible:</strong> la columna “Region” contiene las categorías RM y RG, y “Destino” contiene comuna o ciudad. No existe una columna de origen ni coordenadas sistemáticas; por eso el mapa es esquemático y no inventa ubicaciones.</div>
+            <div class="content-grid geo-grid">
+              <article class="card"><div class="card-header"><div><h3>Mapa esquemático de cobertura</h3><p>Haz clic en RM o Regiones para filtrar</p></div></div><div id="geoSchematicMap" class="geo-map"></div></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Servicios por destino</h3><p>Principales comunas o ciudades</p></div><button class="icon-btn" data-download-chart="geoDestinationsChart">⇩</button></div><canvas id="geoDestinationsChart" class="chart-canvas" height="470"></canvas></article>
+            </div>
+            <div class="content-grid two-columns">
+              <article class="card"><div class="card-header"><div><h3>Resumen por categoría geográfica</h3><p>RM y RG según la clasificación del archivo</p></div></div><div id="regionSummaryTable" class="table-wrap"></div></article>
+              <article class="card"><div class="card-header"><div><h3>Destinos y direcciones frecuentes</h3><p>No se calcula ruta origen-destino porque el origen no está registrado</p></div></div><div id="destinationAddressTable" class="table-wrap"></div></article>
+            </div>
+          </section>
+
+          <section id="view-finance" class="dashboard-view" data-view-panel="finance">
+            <div class="section-heading"><div><span class="eyebrow">Rentabilidad</span><h2>Costos, Ventas y Margen</h2></div></div>
+            <div id="financeKpis" class="kpi-grid"></div>
+            <div class="content-grid two-columns">
+              <article class="card chart-card"><div class="card-header"><div><h3>Evolución financiera mensual</h3><p>Ventas, costos, utilidad y margen</p></div><button class="icon-btn" data-download-chart="financeTrendChart">⇩</button></div><canvas id="financeTrendChart" class="chart-canvas" height="350"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Costo por empresa transportista</h3><p>Detalle del gasto de transporte</p></div><button class="icon-btn" data-download-chart="costByCarrierChart">⇩</button></div><canvas id="costByCarrierChart" class="chart-canvas" height="350"></canvas></article>
+            </div>
+            <div class="content-grid two-columns">
+              <article class="card"><div class="card-header"><div><h3>Servicios con margen negativo</h3><p>Prioriza la revisión de los casos de mayor pérdida</p></div></div><div id="negativeMarginTable" class="table-wrap"></div></article>
+              <article class="card"><div class="card-header"><div><h3>Alertas de calidad financiera</h3><p>Servicios sin costo, sin venta o con inconsistencias</p></div></div><div id="financeAlertsTable" class="table-wrap"></div></article>
+            </div>
+          </section>
+
+          <section id="view-detail" class="dashboard-view" data-view-panel="detail">
+            <div class="section-heading"><div><span class="eyebrow">Base completa</span><h2>Detalle de Registros</h2></div></div>
+            <article class="card detail-card">
+              <div class="detail-toolbar">
+                <div class="search-box"><span>⌕</span><input id="detailSearchInput" type="search" placeholder="Buscar en todos los registros…"></div>
+                <label>Filas por página <select id="detailPageSize"><option>25</option><option>50</option><option>100</option></select></label>
+                <button id="columnChooserButton" class="btn btn-secondary compact" type="button">Mostrar / ocultar columnas</button>
+                <button id="exportDetailButton" class="btn btn-accent compact" type="button">Exportar registros filtrados</button>
+              </div>
+              <div id="columnChooser" class="column-chooser" hidden></div>
+              <div id="detailTable" class="data-grid"></div>
+              <div class="pagination" id="detailPagination"></div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay" hidden>
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <h2 id="loadingTitle">Procesando archivo Excel</h2>
+      <p id="loadingMessage">Leyendo la hoja Plan_Transporte…</p>
+      <div class="progress-track"><div id="loadingProgress" class="progress-bar"></div></div>
+    </div>
+  </div>
+
+  <div id="qualityModal" class="modal" hidden>
+    <div class="modal-dialog large">
+      <div class="modal-header"><div><span class="eyebrow">Validación</span><h2>Calidad de los datos</h2></div><button class="modal-close" data-close-modal="qualityModal" aria-label="Cerrar">×</button></div>
+      <div class="modal-body">
+        <div id="qualityCards" class="quality-grid"></div>
+        <div class="content-grid two-columns modal-grid">
+          <section><h3>Columnas identificadas</h3><div id="columnMappingTable" class="table-wrap"></div></section>
+          <section><h3>Observaciones</h3><div id="qualityObservations"></div><h3>Hojas encontradas</h3><div id="sheetList" class="tag-list"></div></section>
+        </div>
+        <section><h3>Diccionario de datos</h3><div id="dataDictionaryTable" class="table-wrap dictionary-table"></div></section>
+      </div>
+    </div>
+  </div>
+
+  <div id="recordModal" class="modal" hidden>
+    <div class="modal-dialog">
+      <div class="modal-header"><div><span class="eyebrow">Registro individual</span><h2 id="recordModalTitle">Detalle del servicio</h2></div><button class="modal-close" data-close-modal="recordModal" aria-label="Cerrar">×</button></div>
+      <div id="recordModalBody" class="modal-body record-detail"></div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <div id="chartTooltip" class="chart-tooltip" hidden></div>
+
+  <script src="js/excel-reader.js"></script>
+  <script src="js/calculations.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/table.js"></script>
+  <script src="js/dashboard.js"></script>
+  <!-- Copia local opcional del Excel. Permite abrir index.html directamente. -->
+  <script src="data/planilla-local.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+CARPETA DATA — DASHBOARD DE TRANSPORTE
+======================================
+
+Guarda aquí la planilla de transporte.
+
+Nombre recomendado:
+Planilla planificación diaria Transporte_OV.xlsx
+
+Hoja obligatoria:
+Plan_Transporte
+
+ARCHIVOS DE ESTA CARPETA
+- config.json: define el nombre principal y nombres alternativos.
+- Planilla planificación diaria Transporte_OV.xlsx: fuente de datos.
+- planilla-local.js: copia generada para poder abrir index.html directamente.
+
+IMPORTANTE
+No edites planilla-local.js manualmente.
+Cada vez que reemplaces o actualices el Excel, ejecuta:
+
+actualizar_datos_locales.cmd
+
+o inicia el dashboard mediante:
+
+iniciar_dashboard.bat
+
+El iniciador actualiza automáticamente la copia local antes de abrir el dashboard.
