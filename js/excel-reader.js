@@ -9,6 +9,9 @@
   const EXPECTED_SHEET = 'Plan_Transporte';
   const REL_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
   const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  // Versión de la regla de período. Se expone solo para diagnóstico en consola.
+  const PERIOD_RULE_VERSION = '2026-07-28-columna-C-v2';
+
 
   const ALIASES = {
     id: ['id'],
@@ -54,9 +57,9 @@
 
   const FIELD_META = {
     id: { label: 'ID', type: 'Texto', use: 'Identificador único del servicio.', calculation: 'Base para contar servicios sin duplicarlos.' },
-    requestDate: { label: 'Fecha de Solicitud', type: 'Fecha', use: 'Fecha en que se solicita el transporte.', calculation: 'Respaldo cuando no existe fecha de entrega.' },
-    needDate: { label: 'Fecha de necesidad', type: 'Fecha', use: 'Fecha requerida por la operación.', calculation: 'Respaldo para asignar período.' },
-    deliveryDate: { label: 'Fecha_ Entrega _tte', type: 'Fecha', use: 'Fecha principal del servicio.', calculation: 'Año, mes, evolución y comparación interanual.' },
+    requestDate: { label: 'Fecha de Solicitud', type: 'Fecha', use: 'Fecha en que se solicita el transporte.', calculation: 'Dato informativo; no se utiliza para asignar el mes del dashboard.' },
+    needDate: { label: 'Fecha de necesidad', type: 'Fecha', use: 'Fecha requerida por la operación.', calculation: 'Fecha principal para Año, Mes, rango de fechas, evolución mensual y comparación interanual.' },
+    deliveryDate: { label: 'Fecha_ Entrega _tte', type: 'Fecha', use: 'Fecha real de entrega del transporte.', calculation: 'Dato operativo y de detalle; no se utiliza para asignar el mes del dashboard.' },
     client: { label: 'Cliente', type: 'Texto', use: 'Cliente asociado al servicio.', calculation: 'Filtros, rankings y rentabilidad por cliente.' },
     address: { label: 'Direccion', type: 'Texto', use: 'Dirección informada para el servicio.', calculation: 'Detalle y frecuencia de direcciones.' },
     destination: { label: 'Destino', type: 'Texto', use: 'Comuna o ciudad de destino.', calculation: 'Filtro y distribución geográfica.' },
@@ -340,7 +343,10 @@
       const needDate = parseDate(needDateRaw);
       const deliveryDate = parseDate(deliveryDateRaw);
       const invoiceDate = parseDate(invoiceDateRaw);
-      const primaryDate = [deliveryDate, needDate, requestDate].find(isReasonableDate) || null;
+      // Regla de negocio: todos los períodos del dashboard se calculan exclusivamente
+      // con la columna "Fecha de necesidad". No se usan fechas de entrega o solicitud
+      // como respaldo, porque podrían trasladar ventas, costos y servicios a otro mes.
+      const primaryDate = isReasonableDate(needDate) ? needDate : null;
 
       const numericFields = {};
       ['palletsRequested','palletsDelivered','palletsReturned','weight','baseSale','helperCount','helperSale','transportCost','helperCost','otherCosts','totalCost','totalSale','profitStored'].forEach(field => {
@@ -367,7 +373,7 @@
       const issues = [];
       const missingCore = [];
       if (!id) missingCore.push('ID');
-      if (!primaryDate) missingCore.push('Fecha válida');
+      if (!primaryDate) missingCore.push('Fecha de necesidad válida');
       if (!client) missingCore.push('Cliente');
       if (numericFields.totalSale.value === null && numericFields.baseSale.value === null) missingCore.push('Venta');
       if (numericFields.totalCost.value === null && numericFields.transportCost.value === null) missingCore.push('Costo');
@@ -450,7 +456,7 @@
     const invalidDateRows = records.filter(record => record.__issues.some(issue => issue.startsWith('Fecha')));
     const invalidMoneyRows = records.filter(record => record.__issues.some(issue => issue.startsWith('Valor')));
 
-    const requiredFields = ['id','deliveryDate','client','carrier','palletsDelivered','totalSale','totalCost','status'];
+    const requiredFields = ['id','needDate','client','carrier','palletsDelivered','totalSale','totalCost','status'];
     const optionalRequestedFields = ['serviceType','origin','center'];
     const missingRequired = requiredFields.filter(field => !mapping[field]);
     const missingOptional = optionalRequestedFields.filter(field => !mapping[field]);
@@ -590,6 +596,7 @@
 
   global.ExcelReader = {
     EXPECTED_SHEET,
+    PERIOD_RULE_VERSION,
     MONTHS,
     FIELD_META,
     normalizeHeader,
