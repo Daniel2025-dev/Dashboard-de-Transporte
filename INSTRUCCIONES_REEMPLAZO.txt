@@ -1,0 +1,29 @@
+CORRECCIÓN DEFINITIVA - FECHA DE NECESIDAD, COLUMNA C
+=======================================================
+
+REEMPLAZAR EN GITHUB:
+
+1. En la raíz:
+   index.html
+
+2. Dentro de /js:
+   excel-reader.js
+
+3. Dentro de /data:
+   config.json
+   Planilla planificación diaria Transporte_OV.xlsx
+
+IMPORTANTE:
+- No subas la carpeta exterior completa dentro del repositorio.
+- Conserva las rutas indicadas.
+- Confirma el reemplazo de los archivos existentes.
+- Realiza Commit y Push.
+- Espera la actualización de GitHub Pages.
+- Abre el dashboard y presiona Ctrl + F5.
+
+RESULTADO VALIDADO CON LA PLANILLA ADJUNTA:
+- Código anterior: julio = 252 servicios y $39.046.806.
+- Código corregido por columna C: julio = 248 servicios y $35.544.863.
+
+El monto $35.479.302 excluye además el registro WH_2026_2489,
+que sí tiene Fecha de necesidad 28-07-2026 y Venta Total $65.561.
