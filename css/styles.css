@@ -274,7 +274,17 @@ button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity:
 .table-wrap .negative-text { color: var(--red-700); font-weight: 800; }
 .table-wrap .warning-text { color: var(--yellow-700); font-weight: 800; }
 .table-wrap .muted { color: var(--gray-500); }
-.compact-table { max-height: 410px; }
+.compact-table { max-height: 460px; }
+#monthlyComparisonTable table { min-width: 1460px; }
+#monthlyComparisonTable th:first-child,
+#monthlyComparisonTable td:first-child { position: sticky; left: 0; z-index: 3; }
+#monthlyComparisonTable th:first-child { background: var(--blue-900); }
+#monthlyComparisonTable td:first-child { background: var(--white); font-weight: 800; color: var(--blue-900); }
+#monthlyComparisonTable tbody tr:nth-child(even) td:first-child { background: var(--gray-50); }
+#monthlyComparisonTable tfoot td:first-child { background: #edf2ff; }
+#monthlyComparisonTable .previous-period { background: #f5f7fb; }
+#monthlyComparisonTable .current-period { font-weight: 800; }
+
 
 .data-note { margin: 0 0 14px; padding: 11px 14px; border-radius: 10px; font-size: .78rem; line-height: 1.45; }
 .data-note.warning { color: #725000; background: var(--yellow-100); border: 1px solid #f4df9c; }
@@ -397,9 +407,15 @@ button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity:
   .top-actions .btn { flex: 1 1 140px; }
   .privacy-banner { text-align: center; }
   .main-layout { display: block; }
-  .sidebar { position: sticky; top: 0; z-index: 60; height: auto; flex-direction: row; overflow-x: auto; padding: 7px; }
-  .nav-item { flex: 0 0 49px; }
+  .sidebar { position: sticky; top: 0; z-index: 60; height: auto; flex-direction: row; overflow-x: auto; padding: 7px; gap: 5px; scrollbar-width: thin; }
+  .nav-item { flex: 0 0 auto; min-width: max-content; font-size: .72rem; padding: 9px 11px; }
+  .nav-item span { font-size: .9rem; }
   .main-content { padding: 12px 10px 28px; }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .chart-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart-card .chart-canvas { min-width: 620px; }
+  .content-grid { gap: 10px; }
+  .card { padding: 12px; }
   .filters-panel { position: static; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 11px; }
   .filter-field.wide { grid-column: span 2; }
   .filters-panel .btn { grid-column: span 2; }
@@ -416,10 +432,21 @@ button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity:
   .top-actions .btn { flex-basis: 100%; }
   .filters-panel { grid-template-columns: 1fr; }
   .filter-field.wide, .filters-panel .btn { grid-column: auto; }
-  .kpi-grid { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .column-chooser, .quality-grid { grid-template-columns: 1fr; }
   .section-heading { align-items: start; flex-direction: column; }
   .alert-grid { grid-template-columns: 1fr; }
+  .kpi-card { padding: 11px 10px; }
+  .kpi-value { font-size: 1.08rem; }
+  .kpi-label { font-size: .62rem; }
+  .brand-block h1 { font-size: 1.2rem; }
+  .brand-block p { font-size: .72rem; }
+  .chart-card .chart-canvas { min-width: 560px; }
+  #monthlyComparisonTable table { min-width: 1380px; }
+}
+@media (max-width: 360px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .top-actions .btn { font-size: .72rem; }
 }
 
 @media print {
