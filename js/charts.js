@@ -7,6 +7,9 @@
   };
   const registry = new Map();
   const tooltip = () => document.getElementById('chartTooltip');
+  // v10: los gráficos se mantienen estáticos. El redibujado por hover alteraba
+  // el tamaño del canvas y deformaba la visualización en algunas resoluciones.
+  const STATIC_CHARTS = true;
 
   function getCanvas(canvasOrId) {
     return typeof canvasOrId === 'string' ? document.getElementById(canvasOrId) : canvasOrId;
@@ -18,7 +21,9 @@
     const cssWidth = Math.max(300, Math.round(rect.width || containerWidth));
     const requestedHeight = Math.max(240, Number(canvas.getAttribute('height')) || 330);
     const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
-    const cssHeight = expanded ? Math.min(460, Math.max(380, requestedHeight + 80)) : requestedHeight;
+    // Debe coincidir exactamente con la altura final definida en CSS.
+    const expandedHeight = window.matchMedia('(max-width: 760px)').matches ? 400 : 460;
+    const cssHeight = expanded ? expandedHeight : requestedHeight;
 
     // Regla v8: el canvas nunca modifica por sí solo el ancho de la tarjeta.
     canvas.style.width = '100%';
@@ -228,6 +233,7 @@
   }
 
   function scheduleHoverRender(canvas, key) {
+    if (STATIC_CHARTS) return;
     const next = key || '';
     if (canvas.__hoverKey === next) return;
     canvas.__hoverKey = next;
@@ -241,6 +247,10 @@
   function showTooltipForHit(canvas, hit, clientX, clientY) {
     const tip = tooltip();
     if (!tip) return;
+    if (STATIC_CHARTS) {
+      tip.hidden = true;
+      return;
+    }
     if (!hit) {
       tip.hidden = true;
       return;
@@ -252,6 +262,13 @@
   }
 
   function attachInteractions(canvas, chartState) {
+    canvas.__chartState = chartState;
+    canvas.__hoverKey = '';
+    canvas.classList.remove('is-interacting');
+    canvas.style.cursor = 'default';
+    const tip = tooltip();
+    if (tip) tip.hidden = true;
+    if (STATIC_CHARTS) return;
     if (canvas.__chartBound) return;
 
     const handlePointer = event => {

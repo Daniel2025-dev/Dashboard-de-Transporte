@@ -48,10 +48,9 @@
       if (canvas.dataset.interactiveReady === '1') return;
       const card = canvas.closest('.card');
       const title = card?.querySelector('.card-header h3')?.textContent?.trim() || 'Gráfico';
-      canvas.tabIndex = 0;
       canvas.setAttribute('role', 'img');
-      canvas.setAttribute('aria-label', `${title}. Gráfico interactivo: pasa el cursor o toca los elementos para ver valores completos.`);
-      canvas.title = 'Interactivo: pasa el cursor o toca un elemento para ver el detalle.';
+      canvas.setAttribute('aria-label', `${title}. Gráfico informativo.`);
+      canvas.removeAttribute('title');
       canvas.dataset.interactiveReady = '1';
     });
 
