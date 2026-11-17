@@ -916,3 +916,151 @@ body { color: #182337; }
     min-width: 0;
   }
 }
+
+
+/* =========================================================
+   v8 DEFINITIVO — NORMALIZACIÓN DE TAMAÑO DE GRÁFICOS
+   Esta sección está al final y prevalece sobre reglas antiguas.
+   ========================================================= */
+
+/* Ningún gráfico puede ampliar horizontalmente su tarjeta. */
+.chart-card {
+  overflow: hidden !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.chart-card .chart-canvas,
+canvas.chart-canvas {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Alturas normales por tipo de gráfico. */
+#financialSummaryChart,
+#servicePalletChart,
+#annualSalesChart,
+#servicesTrendChart,
+#statusChart,
+#clientEvolutionChart,
+#carrierEvolutionChart {
+  height: 330px !important;
+  min-height: 330px !important;
+  max-height: 330px !important;
+}
+
+#topClientsChart {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+}
+
+#destinationsChart {
+  height: 390px !important;
+  min-height: 390px !important;
+  max-height: 390px !important;
+}
+
+#clientSalesChart,
+#clientProfitChart,
+#carrierServicesChart,
+#carrierCostChart {
+  height: 410px !important;
+  min-height: 410px !important;
+  max-height: 410px !important;
+}
+
+#geoDestinationsChart {
+  height: 470px !important;
+  min-height: 470px !important;
+  max-height: 470px !important;
+}
+
+/* El modo expandido usa más espacio, pero nunca se vuelve gigante. */
+.card.is-expanded .chart-canvas {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 460px !important;
+  min-height: 460px !important;
+  max-height: 460px !important;
+}
+
+/* Cabecera siempre fuera del área del canvas. */
+.chart-card > .card-header {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Tablet */
+@media (max-width: 1100px) {
+  #financialSummaryChart,
+  #servicePalletChart,
+  #annualSalesChart,
+  #servicesTrendChart,
+  #statusChart,
+  #clientEvolutionChart,
+  #carrierEvolutionChart {
+    height: 310px !important;
+    min-height: 310px !important;
+    max-height: 310px !important;
+  }
+
+  #topClientsChart,
+  #destinationsChart,
+  #clientSalesChart,
+  #clientProfitChart,
+  #carrierServicesChart,
+  #carrierCostChart,
+  #geoDestinationsChart {
+    height: 360px !important;
+    min-height: 360px !important;
+    max-height: 360px !important;
+  }
+}
+
+/* Celular */
+@media (max-width: 760px) {
+  .chart-card {
+    overflow-x: hidden !important;
+  }
+
+  .chart-card .chart-canvas,
+  canvas.chart-canvas {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #financialSummaryChart,
+  #servicePalletChart,
+  #annualSalesChart,
+  #servicesTrendChart,
+  #statusChart,
+  #clientEvolutionChart,
+  #carrierEvolutionChart {
+    height: 290px !important;
+    min-height: 290px !important;
+    max-height: 290px !important;
+  }
+
+  #topClientsChart,
+  #destinationsChart,
+  #clientSalesChart,
+  #clientProfitChart,
+  #carrierServicesChart,
+  #carrierCostChart,
+  #geoDestinationsChart {
+    height: 330px !important;
+    min-height: 330px !important;
+    max-height: 330px !important;
+  }
+
+  .card.is-expanded .chart-canvas {
+    height: 400px !important;
+    min-height: 400px !important;
+    max-height: 400px !important;
+  }
+}
