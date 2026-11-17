@@ -146,6 +146,8 @@
       }
     }
 
+    if (!chosen && options.skipWhenCrowded) return null;
+
     if (!chosen) {
       let x = desiredX;
       let y = desiredY;
@@ -406,6 +408,9 @@
     ctx.strokeStyle = '#bfc7d5'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(plot.x, zeroY); ctx.lineTo(plot.x + plot.w, zeroY); ctx.stroke();
 
     const slot = plot.w / Math.max(1, labels.length);
+    // En tarjetas normales se usan etiquetas compactas y se omiten las que no
+    // caben sin superponerse. El tooltip siempre conserva el valor completo.
+    const compactLabels = width < 980 && labels.length >= 10;
     const occupiedLabels = [];
     const barDatasets = datasets.map((ds, index) => ({ ds, index })).filter(({ ds, index }) => ds.type !== 'line' && !hidden.has(index));
     const barWidth = Math.max(4, Math.min(32, slot * .72 / Math.max(1, barDatasets.length)));
@@ -443,7 +448,7 @@
         ctx.restore();
 
         if (value !== 0 && ds.showDataLabels !== false) {
-          const labelText = dataLabelText(value, ds.format);
+          const labelText = compactLabels ? compactValue(value, ds.format) : dataLabelText(value, ds.format);
           const level = barIndex % 3;
           const labelY = value >= 0
             ? Math.max(plot.y + 12 + level * 18, top - 13 - level * 17)
@@ -452,6 +457,7 @@
             color: ds.color || COLORS.blue,
             borderColor: ds.color || COLORS.blue,
             fontSize: isHovered ? 10.2 : 9.2,
+            skipWhenCrowded: compactLabels && !isHovered,
             anchorX: x + (barWidth - 2) / 2,
             anchorY: value >= 0 ? top : top + h
           }, occupiedLabels, {
@@ -497,14 +503,17 @@
         ctx.strokeStyle = COLORS.white; ctx.lineWidth = isHovered ? 2.2 : 1.6; ctx.stroke();
         ctx.restore();
 
-        if (point.value !== 0 && ds.showDataLabels !== false) {
+        const showLineLabel = !compactLabels || isHovered || index % 2 === 0;
+        if (point.value !== 0 && ds.showDataLabels !== false && showLineLabel) {
           const offset = 17 + (dsIndex % 3) * 19;
           const labelY = Math.max(plot.y + 12, point.y - offset);
           const horizontalOffset = (index % 2 === 0 ? -1 : 1) * (dsIndex % 2 ? 20 : 0);
-          placeDataLabel(ctx, dataLabelText(point.value, ds.format), point.x + horizontalOffset, labelY, {
+          const labelText = compactLabels ? compactValue(point.value, ds.format) : dataLabelText(point.value, ds.format);
+          placeDataLabel(ctx, labelText, point.x + horizontalOffset, labelY, {
             color: ds.color || COLORS.orange,
             borderColor: ds.color || COLORS.orange,
             fontSize: isHovered ? 10.2 : 9.2,
+            skipWhenCrowded: compactLabels && !isHovered,
             anchorX: point.x,
             anchorY: point.y
           }, occupiedLabels, {

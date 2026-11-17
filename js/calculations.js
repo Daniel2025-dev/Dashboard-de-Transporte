@@ -20,18 +20,28 @@
     return records.reduce((total, record) => total + (Number(record[field]) || 0), 0);
   }
 
+  function normalizedStatus(record) {
+    const value = String(record?.__statusNormalized || record?.__status || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim().toUpperCase();
+    if (/RECHAZ|NO\s+ENTREG|DEVUELT|FALLID|FRUSTRAD/.test(value)) return 'RECHAZADO';
+    if (/CANCEL|ANUL|ELIMIN|SUSPEND/.test(value)) return 'CANCELADO';
+    if (/ENTREG|DESPACH|COMPLET|FINALIZ|CERRAD|REALIZAD/.test(value)) return 'ENTREGADO';
+    return value || 'SIN ESTADO';
+  }
+
   function metrics(records) {
     const services = uniqueServices(records);
     const serviceCount = services.length;
-    const pallets = sum(services, '__pallets');
+    const pallets = Math.round(sum(services, '__pallets'));
     const weight = sum(services, '__weight');
     const sale = sum(services, '__sale');
     const cost = sum(services, '__cost');
     const profit = sale - cost;
     const margin = sale > 0 ? profit / sale : 0;
-    const delivered = services.filter(record => record.__statusNormalized === 'ENTREGADO').length;
-    const rejected = services.filter(record => record.__statusNormalized === 'RECHAZADO').length;
-    const cancelled = services.filter(record => record.__statusNormalized === 'CANCELADO').length;
+    const delivered = services.filter(record => normalizedStatus(record) === 'ENTREGADO').length;
+    const rejected = services.filter(record => normalizedStatus(record) === 'RECHAZADO').length;
+    const cancelled = services.filter(record => normalizedStatus(record) === 'CANCELADO').length;
     const helperServices = services.filter(record => record.__requiresHelper === 'SI' || record.__requiresHelper === 'SÍ').length;
     return {
       records: services,
@@ -112,7 +122,13 @@
   }
 
   function statusGroups(records) {
-    return sortGroups(group(records, '__status', { emptyLabel: 'Sin estado' }), 'services');
+    // El gráfico usa la categoría homologada para no separar variantes como
+    // "Rechazado"/"rechazado" ni mostrar estados operativos equivalentes.
+    const normalized = uniqueServices(records).map(record => ({
+      ...record,
+      __statusForGroup: normalizedStatus(record)
+    }));
+    return sortGroups(group(normalized, '__statusForGroup', { emptyLabel: 'SIN ESTADO' }), 'services');
   }
 
   function recent(records, limit = 10) {

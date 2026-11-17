@@ -97,7 +97,10 @@
   function normalizeHeader(value) {
     return String(value ?? '')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[°º#._-]/g, ' ')
+      // Unifica separadores habituales de encabezados. Sin esta regla,
+      // "Entregado/Rechazado" no coincidía con el alias "entregado rechazado"
+      // y todos los KPI de estado quedaban en cero.
+      .replace(/[°º#._\-\/\\()[\]:;]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim().toLowerCase();
   }
@@ -108,6 +111,21 @@
 
   function upperText(value) {
     return normalizeText(value).toUpperCase();
+  }
+
+  function normalizeServiceStatus(value, deliveryDate) {
+    const status = upperText(value)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // El orden es importante: "NO ENTREGADO" contiene la palabra ENTREGADO,
+    // pero operacionalmente corresponde a un servicio rechazado/no realizado.
+    if (/RECHAZ|NO\s+ENTREG|DEVUELT|FALLID|FRUSTRAD/.test(status)) return 'RECHAZADO';
+    if (/CANCEL|ANUL|ELIMIN|SUSPEND/.test(status)) return 'CANCELADO';
+    if (/ENTREG|DESPACH|COMPLET|FINALIZ|CERRAD|REALIZAD/.test(status)) return 'ENTREGADO';
+
+    // Una fecha real de entrega es evidencia suficiente cuando el estado está vacío.
+    if (!status && deliveryDate instanceof Date && !Number.isNaN(deliveryDate.getTime())) return 'ENTREGADO';
+    return status || 'SIN ESTADO';
   }
 
   function parseXml(text, fileName) {
@@ -368,7 +386,14 @@
       const totalCost = numericFields.totalCost.value ?? ((numericFields.transportCost.value || 0) + (numericFields.helperCost.value || 0) + (numericFields.otherCosts.value || 0));
       const profit = totalSale - totalCost;
       const margin = totalSale > 0 ? profit / totalSale : 0;
-      const pallets = numericFields.palletsDelivered.value ?? numericFields.palletsRequested.value ?? 0;
+      // Los pallets son unidades físicas discretas: se normalizan siempre a entero.
+      const palletsRaw = numericFields.palletsDelivered.value ?? numericFields.palletsRequested.value ?? 0;
+      const pallets = Math.round(Number(palletsRaw) || 0);
+      const palletsRequested = Math.round(Number(numericFields.palletsRequested.value) || 0);
+      const palletsDelivered = numericFields.palletsDelivered.value === null
+        ? null
+        : Math.round(Number(numericFields.palletsDelivered.value) || 0);
+      const normalizedStatus = normalizeServiceStatus(status, deliveryDate);
 
       const issues = [];
       const missingCore = [];
@@ -404,7 +429,7 @@
         __address: address,
         __destination: destination,
         __region: region,
-        __status: status,
+        __status: status || (normalizedStatus === 'ENTREGADO' ? 'Entregado' : normalizedStatus === 'RECHAZADO' ? 'Rechazado' : normalizedStatus === 'CANCELADO' ? 'Cancelado' : ''),
         __order: order,
         __guide: guide,
         __date: primaryDate,
@@ -415,15 +440,15 @@
         __year: primaryDate ? primaryDate.getUTCFullYear() : null,
         __month: primaryDate ? primaryDate.getUTCMonth() + 1 : null,
         __monthName: primaryDate ? MONTHS[primaryDate.getUTCMonth()] : '',
-        __pallets: pallets || 0,
-        __palletsRequested: numericFields.palletsRequested.value || 0,
-        __palletsDelivered: numericFields.palletsDelivered.value,
+        __pallets: pallets,
+        __palletsRequested: palletsRequested,
+        __palletsDelivered: palletsDelivered,
         __weight: numericFields.weight.value || 0,
         __sale: totalSale || 0,
         __cost: totalCost || 0,
         __profit: profit || 0,
         __margin: margin || 0,
-        __statusNormalized: upperText(status),
+        __statusNormalized: normalizedStatus,
         __requiresHelper: upperText(getRaw(raw, mapping, 'requiresHelper')),
         __serviceKey: serviceKey,
         __compositeKey: compositeKey,

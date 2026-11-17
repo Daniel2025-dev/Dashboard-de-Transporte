@@ -40,7 +40,7 @@
     populate(elements.year, years, 'Todos');
     populate(elements.client, uniqueSorted(records, '__client'), 'Todos');
     populate(elements.carrier, uniqueSorted(records, '__carrier'), 'Todas');
-    populate(elements.status, uniqueSorted(records, '__status'), 'Todos');
+    populate(elements.status, uniqueSorted(records, '__statusNormalized'), 'Todos');
     populate(elements.destination, uniqueSorted(records, '__destination'), 'Todos');
     populate(elements.region, uniqueSorted(records, '__region'), 'Todas');
 
@@ -88,7 +88,7 @@
       if (to && (!record.__date || record.__date > to)) return false;
       if (filters.client && record.__client !== filters.client) return false;
       if (filters.carrier && record.__carrier !== filters.carrier) return false;
-      if (filters.status && record.__status !== filters.status) return false;
+      if (filters.status && record.__statusNormalized !== filters.status) return false;
       if (filters.destination && record.__destination !== filters.destination) return false;
       if (filters.region && record.__region !== filters.region) return false;
       return true;

@@ -32,7 +32,8 @@
     }
     if (type === 'Número') {
       const parsed = global.ExcelReader.parseNumber(value);
-      return parsed.value === null ? '' : global.Calculations.formatNumber(parsed.value, 1);
+      const isPalletField = /pallet/i.test(String(header || ''));
+      return parsed.value === null ? '' : global.Calculations.formatNumber(parsed.value, isPalletField ? 0 : 1);
     }
     if (header === 'Hora_Cita') return record.__appointmentTime;
     return String(value ?? '');

@@ -109,7 +109,7 @@
 
     renderKpis('summaryKpis', [
       { label: 'Total de servicios', value: C.formatNumber(current.services, 0), variation: variation.services, note: 'IDs únicos', tone: 'accent' },
-      { label: 'Total de pallets', value: C.formatNumber(current.pallets, 1), variation: variation.pallets, note: 'Entregados; respaldo solicitados' },
+      { label: 'Total de pallets', value: C.formatNumber(current.pallets, 0), variation: variation.pallets, note: 'Entregados; respaldo solicitados' },
       { label: 'Venta total', value: C.formatCurrency(current.sale), variation: variation.sale, note: 'Venta Total', tone: 'accent' },
       { label: 'Costo total', value: C.formatCurrency(current.cost), variation: variation.cost, favorableLower: true, note: 'Costo Total' },
       { label: 'Utilidad total', value: C.formatCurrency(current.profit), variation: variation.profit, note: 'Venta - Costo', tone: current.profit < 0 ? 'negative' : 'positive' },
@@ -138,7 +138,7 @@
       labels: monthlyCurrent.map(item => item.monthShort),
       datasets: [
         { type: 'bar', label: 'Servicios', data: monthlyCurrent.map(item => item.services), color: COLORS.orange, format: 'number' },
-        { type: 'line', label: 'Pallets', data: monthlyCurrent.map(item => item.pallets), color: COLORS.green, format: 'decimal' }
+        { type: 'line', label: 'Pallets', data: monthlyCurrent.map(item => item.pallets), color: COLORS.green, format: 'number' }
       ],
       onClickLabel: (_, index) => filterRequest?.('month', index + 1)
     });
@@ -256,8 +256,8 @@
       { label: 'Entregados', value: C.formatNumber(current.delivered,0), note: `${C.formatPercent(current.services ? current.delivered/current.services : 0,1)} del total`, tone: 'positive' },
       { label: 'Rechazados', value: C.formatNumber(current.rejected,0), note: `${C.formatPercent(current.services ? current.rejected/current.services : 0,1)} del total`, tone: current.rejected ? 'negative':'' },
       { label: 'Cancelados', value: C.formatNumber(current.cancelled,0), note: 'Estado registrado', tone: current.cancelled ? 'negative':'' },
-      { label: 'Pallets', value: C.formatNumber(current.pallets,1), variation: variation.pallets, note: 'Entregados' },
-      { label: 'Promedio pallets/servicio', value: C.formatNumber(current.avgPallets,1), note: 'Pallets / servicios' },
+      { label: 'Pallets', value: C.formatNumber(current.pallets,0), variation: variation.pallets, note: 'Entregados' },
+      { label: 'Promedio pallets/servicio', value: C.formatNumber(current.avgPallets,0), note: 'Pallets / servicios (redondeado)' },
       { label: 'Peso total', value: `${C.formatNumber(current.weight,0)} kg`, note: 'Suma de Peso' },
       { label: 'Servicios con peoneta', value: C.formatNumber(current.helperServices,0), note: 'Exigencia Peoneta = Sí' }
     ]);
@@ -266,18 +266,18 @@
       labels: monthly.map(item => item.monthShort),
       datasets: [
         { type: 'bar', label: 'Servicios', data: monthly.map(item => item.services), color: COLORS.orange, format: 'number' },
-        { type: 'line', label: 'Pallets', data: monthly.map(item => item.pallets), color: COLORS.blue, format: 'decimal' }
+        { type: 'line', label: 'Pallets', data: monthly.map(item => item.pallets), color: COLORS.blue, format: 'number' }
       ], onClickLabel: (_, index) => filterRequest?.('month', index + 1)
     });
     const status = C.statusGroups(currentRecords);
     global.Charts.horizontalBars('statusChart', {
       items: status.map(item => ({ label: item.label, value: item.services, extraTooltip: `Participación: ${C.formatPercent(item.participation,1)}` })),
       format: 'number', valueLabel: 'Servicios', color: COLORS.blue,
-      onClick: item => filterRequest?.('status', item.label === 'Sin estado' ? '' : item.label)
+      onClick: item => filterRequest?.('status', item.label === 'SIN ESTADO' ? 'SIN ESTADO' : item.label)
     });
     const destinations = C.sortGroups(C.group(currentRecords, '__destination'), 'services').slice(0, 15);
     global.Charts.horizontalBars('destinationsChart', {
-      items: destinations.map(item => ({ label: item.label, value: item.services, extraTooltip: `Pallets: ${C.formatNumber(item.pallets,1)}` })),
+      items: destinations.map(item => ({ label: item.label, value: item.services, extraTooltip: `Pallets: ${C.formatNumber(item.pallets,0)}` })),
       format: 'number', valueLabel: 'Servicios', color: COLORS.orange,
       onClick: item => filterRequest?.('destination', item.label === 'Sin información' ? '' : item.label)
     });
@@ -340,7 +340,7 @@
     });
     createTable('clientDetailTable', ['Cliente','Servicios','Pallets','Venta','Costo','Utilidad','Margen','Participación','Var. ventas'], bySale.map(item => {
       const v = C.variation(item.sale, item.previous?.sale);
-      return [item.label, cell(C.formatNumber(item.services,0),'numeric'), cell(C.formatNumber(item.pallets,1),'numeric'), cell(C.formatCurrency(item.sale),'numeric'), cell(C.formatCurrency(item.cost),'numeric'),
+      return [item.label, cell(C.formatNumber(item.services,0),'numeric'), cell(C.formatNumber(item.pallets,0),'numeric'), cell(C.formatCurrency(item.sale),'numeric'), cell(C.formatCurrency(item.cost),'numeric'),
         cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`), cell(C.formatPercent(item.margin,1),`numeric ${item.margin<0?'negative-text':''}`),
         cell(C.formatPercent(item.participation,1),'numeric'), cell(C.formatVariation(v),`numeric ${v<0?'negative-text':v>0?'positive-text':'muted'}`)];
     }), { onRowClick: index => filterRequest?.('client', bySale[index].label) });
@@ -404,7 +404,7 @@
         ...item,
         ...location,
         rank: index + 1,
-        palletsLabel: C.formatNumber(item.pallets, 1),
+        palletsLabel: C.formatNumber(item.pallets, 0),
         saleLabel: C.formatCurrency(item.sale)
       });
     });
@@ -435,25 +435,25 @@
 
     const destinations = destinationsAll.slice(0, 20);
     global.Charts.horizontalBars('geoDestinationsChart', {
-      items: destinations.map(item => ({ label:item.label,value:item.services,extraTooltip:`Pallets: ${C.formatNumber(item.pallets,1)} · Venta: ${C.formatCurrency(item.sale)}` })),
+      items: destinations.map(item => ({ label:item.label,value:item.services,extraTooltip:`Pallets: ${C.formatNumber(item.pallets,0)} · Venta: ${C.formatCurrency(item.sale)}` })),
       format:'number',valueLabel:'Servicios',color:COLORS.orange,onClick:item=>filterRequest?.('destination',item.label==='Sin información'?'':item.label)
     });
 
     createTable('destinationSummaryTable',['Destino','Servicios','Pallets','Venta','Utilidad','Margen'],destinationsAll.slice(0,30).map(item=>[
       item.label,
       cell(C.formatNumber(item.services,0),'numeric'),
-      cell(C.formatNumber(item.pallets,1),'numeric'),
+      cell(C.formatNumber(item.pallets,0),'numeric'),
       cell(C.formatCurrency(item.sale),'numeric'),
       cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`),
       cell(C.formatPercent(item.margin,1),`numeric ${item.margin<0?'negative-text':''}`)
     ]),{onRowClick:index=>filterRequest?.('destination',destinationsAll[index].label==='Sin información'?'':destinationsAll[index].label)});
 
     createTable('regionSummaryTable',['Clasificación','Servicios','Pallets','Venta','Costo','Utilidad','Margen'],regions.map(item=>[
-      item.label,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,1),'numeric'),cell(C.formatCurrency(item.sale),'numeric'),cell(C.formatCurrency(item.cost),'numeric'),cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`),cell(C.formatPercent(item.margin,1),'numeric')
+      item.label,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,0),'numeric'),cell(C.formatCurrency(item.sale),'numeric'),cell(C.formatCurrency(item.cost),'numeric'),cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`),cell(C.formatPercent(item.margin,1),'numeric')
     ]),{onRowClick:index=>filterRequest?.('region',regions[index].label==='Sin información'?'':regions[index].label)});
 
     const addresses=C.destinationAddressGroups(currentRecords,25);
-    createTable('destinationAddressTable',['Destino','Dirección','Servicios','Pallets'],addresses.map(item=>[item.destination,item.address,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,1),'numeric')]));
+    createTable('destinationAddressTable',['Destino','Dirección','Servicios','Pallets'],addresses.map(item=>[item.destination,item.address,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,0),'numeric')]));
   }
 
   function renderDetail(context) {
