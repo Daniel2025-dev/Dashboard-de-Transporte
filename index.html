@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Dashboard local para analizar la planificación diaria de transporte de Warehousing Chile.">
   <title>Dashboard de Transporte | Warehousing</title>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20261117-comparacion-v4">
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -155,7 +155,7 @@
 
             <div class="content-grid two-columns">
               <article class="card">
-                <div class="card-header"><div><h3>Comparación mensual</h3><p>Período actual frente al año anterior</p></div></div>
+                <div class="card-header"><div><h3>Comparación financiera mensual</h3><p id="comparisonPeriodLabel">Año anterior vs año actual · comparación a igual período</p></div></div>
                 <div id="monthlyComparisonTable" class="table-wrap compact-table"></div>
               </article>
               <article class="card chart-card">
@@ -287,9 +287,9 @@
   <script src="js/excel-reader.js?v=20260728-columna-c-v2"></script>
   <script src="js/calculations.js"></script>
   <script src="js/filters.js"></script>
-  <script src="js/charts.js"></script>
+  <script src="js/charts.js?v=20261117-comparacion-v4"></script>
   <script src="js/table.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script src="js/dashboard.js?v=20261117-comparacion-v4"></script>
   <!-- En GitHub Pages la planilla se carga desde la carpeta data. -->
   <script src="js/app.js?v=20260728-columna-c-v2"></script>
 </body>
