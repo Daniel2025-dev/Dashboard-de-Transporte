@@ -1,0 +1,74 @@
+/* Corrección definitiva v10: gráficos estáticos y vista ampliada blanca. */
+
+.chart-card,
+.chart-card:hover {
+  transform: none !important;
+  filter: none !important;
+  background: #fff !important;
+  border-color: #d7dfeb !important;
+  box-shadow: 0 4px 16px rgba(16, 38, 83, .07) !important;
+}
+
+.chart-card::before,
+.chart-card:hover::before {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+.chart-card .chart-canvas,
+.chart-card:hover .chart-canvas,
+.chart-canvas.is-interacting {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  transform: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+  background: #fff !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.chart-tooltip {
+  display: none !important;
+}
+
+.card.is-expanded,
+.chart-card.is-expanded {
+  background: #fff !important;
+  color: #182337 !important;
+  border: 1px solid #d7dfeb !important;
+  box-shadow: 0 18px 55px rgba(16, 38, 83, .22) !important;
+}
+
+.card.is-expanded::after,
+.chart-card.is-expanded::after {
+  display: none !important;
+  content: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+.card.is-expanded > .card-header {
+  background: #fff !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid #e3e8f0 !important;
+}
+
+.card.is-expanded .chart-canvas {
+  width: 100% !important;
+  height: 460px !important;
+  min-height: 460px !important;
+  max-height: 460px !important;
+  background: #fff !important;
+}
+
+@media (max-width: 760px) {
+  .card.is-expanded .chart-canvas {
+    height: 400px !important;
+    min-height: 400px !important;
+    max-height: 400px !important;
+  }
+}
