@@ -43,7 +43,27 @@
     setTimeout(() => refreshVisuals(card), 100);
   }
 
+  function enhanceInteractiveVisuals() {
+    document.querySelectorAll('canvas.chart-canvas').forEach(canvas => {
+      if (canvas.dataset.interactiveReady === '1') return;
+      const card = canvas.closest('.card');
+      const title = card?.querySelector('.card-header h3')?.textContent?.trim() || 'Gráfico';
+      canvas.tabIndex = 0;
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', `${title}. Gráfico interactivo: pasa el cursor o toca los elementos para ver valores completos.`);
+      canvas.title = 'Interactivo: pasa el cursor o toca un elemento para ver el detalle.';
+      canvas.dataset.interactiveReady = '1';
+    });
+
+    document.querySelectorAll('.table-wrap, .data-grid').forEach(grid => {
+      if (grid.dataset.focusReady === '1') return;
+      grid.tabIndex = 0;
+      grid.dataset.focusReady = '1';
+    });
+  }
+
   function addExpandButtons() {
+    enhanceInteractiveVisuals();
     document.querySelectorAll('.card').forEach(card => {
       if (card.dataset.expandReady === '1') return;
       const expandable = card.querySelector('canvas, .table-wrap, .data-grid, .geo-map, .geo-visit-map');
@@ -75,9 +95,12 @@
     if (event.key === 'Escape' && expandedCard) closeExpanded();
   });
 
-  const observer = new MutationObserver(() => addExpandButtons());
+  const observer = new MutationObserver(() => {
+    addExpandButtons();
+    enhanceInteractiveVisuals();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   addExpandButtons();
 
-  global.UiEnhancements = { refresh: addExpandButtons, closeExpanded };
+  global.UiEnhancements = { refresh: addExpandButtons, closeExpanded, enhanceInteractiveVisuals };
 })(window);
