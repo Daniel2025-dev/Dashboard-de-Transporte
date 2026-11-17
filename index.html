@@ -6,7 +6,8 @@
   <meta name="description" content="Dashboard local para analizar la planificación diaria de transporte de Warehousing Chile.">
   <title>Dashboard de Transporte | Warehousing</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
-  <link rel="stylesheet" href="css/styles.css?v=20261117-graficos-v8">
+  <link rel="stylesheet" href="css/styles.css?v=20261117-graficos-estaticos-v10">
+  <link rel="stylesheet" href="css/static-charts-v10.css?v=20261117-graficos-estaticos-v10">
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -188,7 +189,7 @@
             <div class="section-heading"><div><span class="eyebrow">Análisis comercial</span><h2>Clientes</h2></div></div>
             <div id="clientKpis" class="kpi-grid"></div>
             <div class="content-grid two-columns">
-              <article class="card chart-card"><div class="card-header"><div><h3>Ranking por ventas</h3><p>Haz clic para filtrar un cliente</p></div><button class="icon-btn" data-download-chart="clientSalesChart">⇩</button></div><canvas id="clientSalesChart" class="chart-canvas" height="410"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Ranking por ventas</h3><p>Venta total por cliente</p></div><button class="icon-btn" data-download-chart="clientSalesChart">⇩</button></div><canvas id="clientSalesChart" class="chart-canvas" height="410"></canvas></article>
               <article class="card chart-card"><div class="card-header"><div><h3>Ranking por utilidad</h3><p>Rentabilidad acumulada por cliente</p></div><button class="icon-btn" data-download-chart="clientProfitChart">⇩</button></div><canvas id="clientProfitChart" class="chart-canvas" height="410"></canvas></article>
             </div>
             <article class="card chart-card"><div class="card-header"><div><h3>Evolución mensual del cliente</h3><p id="clientEvolutionLabel">Cliente con mayor venta del período</p></div><button class="icon-btn" data-download-chart="clientEvolutionChart">⇩</button></div><canvas id="clientEvolutionChart" class="chart-canvas" height="330"></canvas></article>
@@ -199,7 +200,7 @@
             <div class="section-heading"><div><span class="eyebrow">Proveedores de transporte</span><h2>Empresas de Transporte</h2></div></div>
             <div id="carrierKpis" class="kpi-grid"></div>
             <div class="content-grid two-columns">
-              <article class="card chart-card"><div class="card-header"><div><h3>Servicios por transportista</h3><p>Haz clic para analizar una empresa</p></div><button class="icon-btn" data-download-chart="carrierServicesChart">⇩</button></div><canvas id="carrierServicesChart" class="chart-canvas" height="410"></canvas></article>
+              <article class="card chart-card"><div class="card-header"><div><h3>Servicios por transportista</h3><p>Cantidad de servicios por empresa</p></div><button class="icon-btn" data-download-chart="carrierServicesChart">⇩</button></div><canvas id="carrierServicesChart" class="chart-canvas" height="410"></canvas></article>
               <article class="card chart-card"><div class="card-header"><div><h3>Costo por transportista</h3><p>Participación en el costo total</p></div><button class="icon-btn" data-download-chart="carrierCostChart">⇩</button></div><canvas id="carrierCostChart" class="chart-canvas" height="410"></canvas></article>
             </div>
             <article class="card chart-card"><div class="card-header"><div><h3>Evolución mensual del transportista</h3><p id="carrierEvolutionLabel">Empresa con más servicios del período</p></div><button class="icon-btn" data-download-chart="carrierEvolutionChart">⇩</button></div><canvas id="carrierEvolutionChart" class="chart-canvas" height="330"></canvas></article>
@@ -284,13 +285,13 @@
   <script src="js/excel-reader.js?v=20261117-estados-pallets-v9"></script>
   <script src="js/calculations.js?v=20261117-estados-pallets-v9"></script>
   <script src="js/filters.js?v=20261117-estados-pallets-v9"></script>
-  <script src="js/charts.js?v=20261117-estados-pallets-v9"></script>
+  <script src="js/charts.js?v=20261117-graficos-estaticos-v10"></script>
   <script src="js/table.js?v=20261117-estados-pallets-v9"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
   <script src="js/geography-data.js?v=20261117-mapa-v5"></script>
   <script src="js/geo-map.js?v=20261117-mapa-v5"></script>
   <script src="js/dashboard.js?v=20261117-estados-pallets-v9"></script>
-  <script src="js/ui-enhancements.js?v=20261117-graficos-v6"></script>
+  <script src="js/ui-enhancements.js?v=20261117-graficos-estaticos-v10"></script>
   <!-- En GitHub Pages la planilla se carga desde la carpeta data. -->
   <script src="js/app.js?v=20260728-columna-c-v2"></script>
 </body>
