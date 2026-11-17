@@ -14,21 +14,24 @@
 
   function setupCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
-    const cssWidth = Math.max(300, Math.round(rect.width || canvas.parentElement?.clientWidth || 600));
+    const containerWidth = canvas.parentElement?.clientWidth || 600;
+    const cssWidth = Math.max(300, Math.round(rect.width || containerWidth));
     const requestedHeight = Math.max(240, Number(canvas.getAttribute('height')) || 330);
     const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
-    const isMobile = window.innerWidth <= 760;
+    const cssHeight = expanded ? Math.min(460, Math.max(380, requestedHeight + 80)) : requestedHeight;
 
-    // En modo normal siempre respetamos el alto definido en index.html.
-    // Solo al expandir aumentamos moderadamente el alto para aprovechar la pantalla.
-    const cssHeight = expanded
-      ? Math.min(isMobile ? 440 : 520, requestedHeight + (isMobile ? 50 : 100))
-      : requestedHeight;
+    // Regla v8: el canvas nunca modifica por sí solo el ancho de la tarjeta.
+    canvas.style.width = '100%';
+    canvas.style.minWidth = '0px';
+    canvas.style.maxWidth = '100%';
+    canvas.style.height = `${cssHeight}px`;
+    canvas.style.minHeight = `${cssHeight}px`;
+    canvas.style.maxHeight = `${cssHeight}px`;
 
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(cssWidth * ratio);
     canvas.height = Math.round(cssHeight * ratio);
-    canvas.style.height = `${cssHeight}px`;
+
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
@@ -339,20 +342,8 @@
     const labels = config.labels || [];
     const datasets = (config.datasets || []).filter(ds => Array.isArray(ds.data));
     const visibleSeriesCount = Math.max(1, datasets.length);
-    const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
-    const isSmallScreen = window.innerWidth <= 760;
-
-    // El gráfico no agranda la tarjeta. Si hay muchas categorías, usa un ancho
-    // interno moderado para conservar legibilidad, especialmente en móvil.
-    let minimumWidth = 0;
-    if (expanded) {
-      minimumWidth = Math.min(1080, Math.max(820, labels.length * 78));
-    } else if (isSmallScreen && labels.length >= 8) {
-      minimumWidth = Math.min(820, Math.max(620, labels.length * 58));
-    } else if (labels.length >= 10 && visibleSeriesCount >= 3) {
-      minimumWidth = Math.min(920, Math.max(720, labels.length * 62));
-    }
-    canvas.style.minWidth = minimumWidth ? `${minimumWidth}px` : '0px';
+    canvas.style.minWidth = '0px';
+    canvas.style.maxWidth = '100%';
     canvas.__preferredHeight = 0;
     const { ctx, width, height } = setupCanvas(canvas);
     if (!labels.length || !datasets.length || !datasets.some(ds => ds.data.some(v => Number.isFinite(Number(v))))) {
@@ -536,17 +527,8 @@
     if (!canvas) return;
     registry.set(canvas.id, { type: 'horizontal', config });
     const items = (config.items || []).filter(item => item && Number.isFinite(Number(item.value)));
-    const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
-    const isSmallScreen = window.innerWidth <= 760;
-    let minimumWidth = 0;
-    if (expanded) {
-      minimumWidth = 900;
-    } else if (isSmallScreen && config.format === 'currency') {
-      minimumWidth = 680;
-    } else if (isSmallScreen) {
-      minimumWidth = 600;
-    }
-    canvas.style.minWidth = minimumWidth ? `${minimumWidth}px` : '0px';
+    canvas.style.minWidth = '0px';
+    canvas.style.maxWidth = '100%';
     canvas.__preferredHeight = 0;
     const { ctx, width, height } = setupCanvas(canvas);
     if (!items.length) {
