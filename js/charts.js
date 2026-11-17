@@ -15,9 +15,16 @@
   function setupCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
     const cssWidth = Math.max(300, Math.round(rect.width || canvas.parentElement?.clientWidth || 600));
-    const requestedHeight = Number(canvas.getAttribute('height')) || 330;
-    const preferredHeight = Number(canvas.__preferredHeight) || 0;
-    const cssHeight = Math.max(240, requestedHeight, preferredHeight, Math.round(rect.height || 0));
+    const requestedHeight = Math.max(240, Number(canvas.getAttribute('height')) || 330);
+    const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
+    const isMobile = window.innerWidth <= 760;
+
+    // En modo normal siempre respetamos el alto definido en index.html.
+    // Solo al expandir aumentamos moderadamente el alto para aprovechar la pantalla.
+    const cssHeight = expanded
+      ? Math.min(isMobile ? 440 : 520, requestedHeight + (isMobile ? 50 : 100))
+      : requestedHeight;
+
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(cssWidth * ratio);
     canvas.height = Math.round(cssHeight * ratio);
@@ -332,9 +339,21 @@
     const labels = config.labels || [];
     const datasets = (config.datasets || []).filter(ds => Array.isArray(ds.data));
     const visibleSeriesCount = Math.max(1, datasets.length);
-    const categoryWidth = visibleSeriesCount >= 4 ? 150 : visibleSeriesCount === 3 ? 138 : visibleSeriesCount === 2 ? 124 : 112;
-    canvas.style.minWidth = `${Math.max(720, Math.min(2200, labels.length * categoryWidth))}px`;
-    canvas.__preferredHeight = Math.max(Number(canvas.getAttribute('height')) || 330, 350 + Math.max(0, visibleSeriesCount - 2) * 22);
+    const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
+    const isSmallScreen = window.innerWidth <= 760;
+
+    // El gráfico no agranda la tarjeta. Si hay muchas categorías, usa un ancho
+    // interno moderado para conservar legibilidad, especialmente en móvil.
+    let minimumWidth = 0;
+    if (expanded) {
+      minimumWidth = Math.min(1080, Math.max(820, labels.length * 78));
+    } else if (isSmallScreen && labels.length >= 8) {
+      minimumWidth = Math.min(820, Math.max(620, labels.length * 58));
+    } else if (labels.length >= 10 && visibleSeriesCount >= 3) {
+      minimumWidth = Math.min(920, Math.max(720, labels.length * 62));
+    }
+    canvas.style.minWidth = minimumWidth ? `${minimumWidth}px` : '0px';
+    canvas.__preferredHeight = 0;
     const { ctx, width, height } = setupCanvas(canvas);
     if (!labels.length || !datasets.length || !datasets.some(ds => ds.data.some(v => Number.isFinite(Number(v))))) {
       drawEmpty(ctx, width, height, config.emptyMessage);
@@ -517,8 +536,18 @@
     if (!canvas) return;
     registry.set(canvas.id, { type: 'horizontal', config });
     const items = (config.items || []).filter(item => item && Number.isFinite(Number(item.value)));
-    canvas.style.minWidth = `${config.format === 'currency' ? 900 : 780}px`;
-    canvas.__preferredHeight = Math.max(Number(canvas.getAttribute('height')) || 330, items.length * 34 + 70);
+    const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
+    const isSmallScreen = window.innerWidth <= 760;
+    let minimumWidth = 0;
+    if (expanded) {
+      minimumWidth = 900;
+    } else if (isSmallScreen && config.format === 'currency') {
+      minimumWidth = 680;
+    } else if (isSmallScreen) {
+      minimumWidth = 600;
+    }
+    canvas.style.minWidth = minimumWidth ? `${minimumWidth}px` : '0px';
+    canvas.__preferredHeight = 0;
     const { ctx, width, height } = setupCanvas(canvas);
     if (!items.length) {
       drawEmpty(ctx, width, height, config.emptyMessage);
