@@ -822,3 +822,97 @@ body { color: #182337; }
     transition: none !important;
   }
 }
+
+
+/* =========================================================
+   Corrección v7 · proporción uniforme de gráficos
+   ========================================================= */
+
+/* El canvas nunca debe expandir la tarjeta en escritorio. */
+.chart-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-card .chart-canvas {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+}
+
+/* En modo normal el alto queda controlado por el atributo height del canvas.
+   Se elimina cualquier min-height heredado de versiones anteriores. */
+.card:not(.is-expanded) .chart-canvas {
+  min-height: 0 !important;
+}
+
+/* Modo expandido: más espacio, pero sin tamaños excesivos. */
+.card.is-expanded .chart-canvas {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 520px !important;
+}
+
+/* Si JavaScript necesita un ancho interno para etiquetas, la tarjeta contiene
+   el desplazamiento y no altera el resto del dashboard. */
+.chart-card {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #9aaccc #eef2f8;
+}
+
+.chart-card::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chart-card::-webkit-scrollbar-track {
+  background: #eef2f8;
+  border-radius: 999px;
+}
+
+.chart-card::-webkit-scrollbar-thumb {
+  background: #9aaccc;
+  border-radius: 999px;
+}
+
+.chart-card::-webkit-scrollbar-thumb:hover {
+  background: #6f84b5;
+}
+
+/* Mantiene el encabezado fijo y fuera del área desplazable visualmente. */
+.chart-card > .card-header {
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  background: inherit;
+}
+
+/* En pantallas normales se evita el mínimo de 620/560 px heredado. */
+@media (min-width: 761px) {
+  .chart-card .chart-canvas {
+    min-width: 0;
+  }
+}
+
+/* En móvil se conserva un desplazamiento moderado solo cuando el motor
+   de gráficos lo solicita. No se fuerza un ancho gigante desde CSS. */
+@media (max-width: 760px) {
+  .chart-card .chart-canvas {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .card.is-expanded .chart-canvas {
+    min-width: 0 !important;
+    max-height: 440px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-card .chart-canvas {
+    min-width: 0;
+  }
+}
