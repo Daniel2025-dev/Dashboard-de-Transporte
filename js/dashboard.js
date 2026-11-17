@@ -90,9 +90,21 @@
     return { current, previous, variation: C.compareMetrics(current, previous) };
   }
 
+  // Compara contra el mismo rango de meses del año anterior cuando el año actual
+  // aún no termina (ej.: ene-nov 2026 vs ene-nov 2025).
+  function comparablePreviousRecords(currentRecords, previousRecords, filters) {
+    if (!Array.isArray(previousRecords)) return [];
+    if (!filters?.year || filters.month || filters.dateFrom || filters.dateTo) return previousRecords;
+    const activeMonths = currentRecords.map(record => record.__month).filter(Number.isFinite);
+    if (!activeMonths.length) return previousRecords;
+    const lastMonth = Math.max(...activeMonths);
+    return previousRecords.filter(record => Number(record.__month) <= lastMonth);
+  }
+
   function renderSummary(context) {
     const { currentRecords, previousRecords, filters } = context;
-    const { current, previous, variation } = metricComparison(currentRecords, previousRecords);
+    const comparablePrevious = comparablePreviousRecords(currentRecords, previousRecords, filters);
+    const { current, previous, variation } = metricComparison(currentRecords, comparablePrevious);
     byId('summaryPeriodLabel').textContent = global.Filters.periodLabel(filters);
 
     renderKpis('summaryKpis', [
@@ -102,18 +114,15 @@
       { label: 'Costo total', value: C.formatCurrency(current.cost), variation: variation.cost, favorableLower: true, note: 'Costo Total' },
       { label: 'Utilidad total', value: C.formatCurrency(current.profit), variation: variation.profit, note: 'Venta - Costo', tone: current.profit < 0 ? 'negative' : 'positive' },
       { label: 'Margen porcentual', value: C.formatPercent(current.margin, 1), variation: variation.margin, note: 'Utilidad / Venta', tone: current.margin < 0 ? 'negative' : 'positive' },
-      { label: 'Venta promedio por servicio', value: C.formatCurrency(current.avgSale), note: 'Venta / servicios' },
-      { label: 'Costo promedio por servicio', value: C.formatCurrency(current.avgCost), note: 'Costo / servicios' },
-      { label: 'Utilidad promedio por servicio', value: C.formatCurrency(current.avgProfit), note: 'Utilidad / servicios', tone: current.avgProfit < 0 ? 'negative' : '' },
-      { label: 'Variación de servicios', value: C.formatVariation(variation.services), note: 'Frente al año anterior', tone: variationClass(variation.services) === 'down' ? 'negative' : 'positive' },
-      { label: 'Variación de ventas', value: C.formatVariation(variation.sale), note: 'Frente al año anterior', tone: variationClass(variation.sale) === 'down' ? 'negative' : 'positive' },
-      { label: 'Variación de costos', value: C.formatVariation(variation.cost), note: 'Frente al año anterior', tone: variationClass(variation.cost, true) === 'down' ? 'negative' : 'positive' },
-      { label: 'Variación de utilidad', value: C.formatVariation(variation.profit), note: 'Frente al año anterior', tone: variationClass(variation.profit) === 'down' ? 'negative' : 'positive' },
+      { label: 'Variación de servicios', value: C.formatVariation(variation.services), note: 'Mismo período año anterior', tone: variationClass(variation.services) === 'down' ? 'negative' : 'positive' },
+      { label: 'Variación de ventas', value: C.formatVariation(variation.sale), note: 'Mismo período año anterior', tone: variationClass(variation.sale) === 'down' ? 'negative' : 'positive' },
+      { label: 'Variación de costos', value: C.formatVariation(variation.cost), note: 'Mismo período año anterior', tone: variationClass(variation.cost, true) === 'down' ? 'negative' : 'positive' },
+      { label: 'Variación de utilidad', value: C.formatVariation(variation.profit), note: 'Mismo período año anterior', tone: variationClass(variation.profit) === 'down' ? 'negative' : 'positive' },
       { label: 'Variación de margen', value: C.formatVariation(variation.margin), note: previous ? `${(variation.marginPoints * 100).toLocaleString('es-CL', { maximumFractionDigits: 1 })} pp` : 'Sin base', tone: variationClass(variation.margin) === 'down' ? 'negative' : 'positive' }
     ]);
 
     const monthlyCurrent = monthlyData(currentRecords);
-    const monthlyPrevious = previousRecords ? monthlyData(previousRecords) : monthlyData([]);
+    const monthlyPrevious = comparablePrevious.length ? monthlyData(comparablePrevious) : monthlyData([]);
     global.Charts.mixed('financialSummaryChart', {
       labels: monthlyCurrent.map(item => item.monthShort),
       datasets: [
@@ -133,33 +142,92 @@
       ],
       onClickLabel: (_, index) => filterRequest?.('month', index + 1)
     });
+    const currentYearLabel = filters.year ? String(filters.year) : 'Actual';
+    const previousYearLabel = filters.year ? String(filters.year - 1) : 'Anterior';
+
+    // En vista anual, no muestra meses futuros vacíos. Si el usuario selecciona un
+    // mes, compara exclusivamente ese mes contra el mismo mes del año anterior.
+    const activeMonthIndexes = monthlyCurrent.reduce((indexes, item, index) => {
+      if (item.services || item.pallets || item.sale || item.cost || item.profit) indexes.push(index);
+      return indexes;
+    }, []);
+    const visibleMonthIndexes = filters.month
+      ? [Math.max(0, Math.min(11, Number(filters.month) - 1))]
+      : Array.from({ length: activeMonthIndexes.length ? Math.max(...activeMonthIndexes) + 1 : 12 }, (_, index) => index);
+    const comparisonCurrent = visibleMonthIndexes.map(index => monthlyCurrent[index]);
+    const comparisonPrevious = visibleMonthIndexes.map(index => monthlyPrevious[index]);
+
+    const comparisonPeriodLabel = byId('comparisonPeriodLabel');
+    if (comparisonPeriodLabel) {
+      comparisonPeriodLabel.textContent = `${previousYearLabel} vs ${currentYearLabel} · comparación a igual período`;
+    }
+
     global.Charts.mixed('annualSalesChart', {
-      labels: monthlyCurrent.map(item => item.monthShort),
+      labels: comparisonCurrent.map(item => item.monthShort),
       datasets: [
-        { type: 'line', label: filters.year ? String(filters.year) : 'Período actual', data: monthlyCurrent.map(item => item.sale), color: COLORS.orange, format: 'currency' },
-        { type: 'line', label: filters.year ? String(filters.year - 1) : 'Período anterior', data: monthlyPrevious.map(item => item.sale), color: COLORS.blueLight, format: 'currency' }
+        { type: 'line', label: currentYearLabel, data: comparisonCurrent.map(item => item.sale), color: COLORS.orange, format: 'currency' },
+        { type: 'line', label: previousYearLabel, data: comparisonPrevious.map(item => item.sale), color: COLORS.blueLight, format: 'currency' }
       ],
-      leftFormat: 'currency', onClickLabel: (_, index) => filterRequest?.('month', index + 1)
+      leftFormat: 'currency', onClickLabel: (_, index) => filterRequest?.('month', visibleMonthIndexes[index] + 1)
     });
 
-    const comparisonRows = monthlyCurrent.map((item, index) => {
-      const prev = monthlyPrevious[index];
-      const salesVar = C.variation(item.sale, prev.sale);
-      const marginVar = C.variation(item.margin, prev.margin);
+    const comparisonRows = comparisonCurrent.map((item, index) => {
+      const prev = comparisonPrevious[index];
+      const saleDiff = item.sale - prev.sale;
+      const saleVar = C.variation(item.sale, prev.sale);
+      const profitDiff = item.profit - prev.profit;
+      const marginPoints = (item.margin - prev.margin) * 100;
       return [
         item.monthName,
-        cell(C.formatNumber(item.services, 0), 'numeric'),
-        cell(C.formatNumber(item.pallets, 1), 'numeric'),
-        cell(C.formatCurrency(item.sale), 'numeric'),
-        cell(C.formatCurrency(item.cost), 'numeric'),
-        cell(C.formatCurrency(item.profit), `numeric ${item.profit < 0 ? 'negative-text' : 'positive-text'}`),
-        cell(C.formatPercent(item.margin, 1), `numeric ${item.margin < 0 ? 'negative-text' : ''}`),
-        cell(C.formatVariation(salesVar), `numeric ${salesVar < 0 ? 'negative-text' : salesVar > 0 ? 'positive-text' : 'muted'}`),
-        cell(C.formatVariation(marginVar), `numeric ${marginVar < 0 ? 'negative-text' : marginVar > 0 ? 'positive-text' : 'muted'}`)
+        cell(C.formatCurrency(prev.sale), 'numeric previous-period'),
+        cell(C.formatCurrency(item.sale), 'numeric current-period'),
+        cell(C.formatCurrency(saleDiff), `numeric ${saleDiff < 0 ? 'negative-text' : saleDiff > 0 ? 'positive-text' : 'muted'}`),
+        cell(C.formatVariation(saleVar), `numeric ${saleVar < 0 ? 'negative-text' : saleVar > 0 ? 'positive-text' : 'muted'}`),
+        cell(C.formatCurrency(prev.cost), 'numeric previous-period'),
+        cell(C.formatCurrency(item.cost), 'numeric current-period'),
+        cell(C.formatCurrency(prev.profit), `numeric previous-period ${prev.profit < 0 ? 'negative-text' : ''}`),
+        cell(C.formatCurrency(item.profit), `numeric current-period ${item.profit < 0 ? 'negative-text' : 'positive-text'}`),
+        cell(C.formatCurrency(profitDiff), `numeric ${profitDiff < 0 ? 'negative-text' : profitDiff > 0 ? 'positive-text' : 'muted'}`),
+        cell(C.formatPercent(prev.margin, 1), `numeric previous-period ${prev.margin < 0 ? 'negative-text' : ''}`),
+        cell(C.formatPercent(item.margin, 1), `numeric current-period ${item.margin < 0 ? 'negative-text' : ''}`),
+        cell(`${marginPoints > 0 ? '+' : ''}${marginPoints.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} pp`, `numeric ${marginPoints < 0 ? 'negative-text' : marginPoints > 0 ? 'positive-text' : 'muted'}`)
       ];
     });
-    createTable('monthlyComparisonTable', ['Mes','Servicios','Pallets','Venta','Costo','Utilidad','Margen','Var. venta','Var. margen'], comparisonRows,
-      { footer: ['Total', C.formatNumber(current.services,0), C.formatNumber(current.pallets,1), C.formatCurrency(current.sale), C.formatCurrency(current.cost), C.formatCurrency(current.profit), C.formatPercent(current.margin,1), C.formatVariation(variation.sale), C.formatVariation(variation.margin)] });
+
+    const sumRows = rows => {
+      const sale = rows.reduce((sum, item) => sum + (Number(item.sale) || 0), 0);
+      const cost = rows.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
+      const profit = sale - cost;
+      return { sale, cost, profit, margin: sale > 0 ? profit / sale : 0 };
+    };
+    const currentComparable = sumRows(comparisonCurrent);
+    const previousComparable = sumRows(comparisonPrevious);
+    const totalSaleDiff = currentComparable.sale - previousComparable.sale;
+    const totalSaleVar = C.variation(currentComparable.sale, previousComparable.sale);
+    const totalProfitDiff = currentComparable.profit - previousComparable.profit;
+    const totalMarginPoints = (currentComparable.margin - previousComparable.margin) * 100;
+
+    createTable(
+      'monthlyComparisonTable',
+      [
+        'Mes',
+        `Venta ${previousYearLabel}`, `Venta ${currentYearLabel}`, 'Δ Venta $', 'Var. Venta',
+        `Costo ${previousYearLabel}`, `Costo ${currentYearLabel}`,
+        `Utilidad ${previousYearLabel}`, `Utilidad ${currentYearLabel}`, 'Δ Utilidad $',
+        `Margen ${previousYearLabel}`, `Margen ${currentYearLabel}`, 'Δ Margen pp'
+      ],
+      comparisonRows,
+      {
+        footer: [
+          'Total período',
+          C.formatCurrency(previousComparable.sale), C.formatCurrency(currentComparable.sale), C.formatCurrency(totalSaleDiff), C.formatVariation(totalSaleVar),
+          C.formatCurrency(previousComparable.cost), C.formatCurrency(currentComparable.cost),
+          C.formatCurrency(previousComparable.profit), C.formatCurrency(currentComparable.profit), C.formatCurrency(totalProfitDiff),
+          C.formatPercent(previousComparable.margin, 1), C.formatPercent(currentComparable.margin, 1),
+          `${totalMarginPoints > 0 ? '+' : ''}${totalMarginPoints.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} pp`
+        ]
+      }
+    );
 
     const clients = C.sortGroups(C.group(currentRecords, '__client'), 'sale').slice(0, 10);
     global.Charts.horizontalBars('topClientsChart', {

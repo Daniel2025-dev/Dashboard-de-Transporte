@@ -40,6 +40,31 @@
     return global.Calculations.compact(value, 'number');
   }
 
+
+  // Dibuja etiquetas completas sobre las series. El fondo blanco evita que el
+  // texto se pierda sobre barras o líneas.
+  function drawDataLabel(ctx, text, x, y, options = {}) {
+    if (text === null || text === undefined || text === '') return;
+    const fontSize = options.fontSize || 9;
+    ctx.save();
+    ctx.font = `800 ${fontSize}px Inter, Segoe UI, Arial, sans-serif`;
+    ctx.textAlign = options.align || 'center';
+    ctx.textBaseline = options.baseline || 'middle';
+    const paddingX = 3;
+    const paddingY = 2;
+    const metrics = ctx.measureText(String(text));
+    const textWidth = metrics.width;
+    let left = x - textWidth / 2 - paddingX;
+    if (ctx.textAlign === 'left') left = x - paddingX;
+    if (ctx.textAlign === 'right') left = x - textWidth - paddingX;
+    const top = y - fontSize / 2 - paddingY;
+    ctx.fillStyle = 'rgba(255,255,255,.88)';
+    ctx.fillRect(left, top, textWidth + paddingX * 2, fontSize + paddingY * 2);
+    ctx.fillStyle = options.color || COLORS.text;
+    ctx.fillText(String(text), x, y);
+    ctx.restore();
+  }
+
   function niceRange(values, includeZero = true) {
     const finite = values.filter(Number.isFinite);
     if (!finite.length) return { min: 0, max: 1 };
@@ -169,8 +194,6 @@
     canvas.__hiddenDatasets = hidden;
     const hits = [];
     const legendBottom = drawLegend(ctx, datasets, hidden, width, hits);
-    const margin = { left: 66, right: datasets.some(ds => ds.axis === 'right') ? 58 : 24, top: Math.max(42, legendBottom + 4), bottom: 58 };
-    const plot = { x: margin.left, y: margin.top, w: width - margin.left - margin.right, h: height - margin.top - margin.bottom };
     const leftValues = [], rightValues = [];
     datasets.forEach((ds, index) => {
       if (hidden.has(index)) return;
@@ -178,6 +201,24 @@
     });
     const leftRange = niceRange(leftValues.length ? leftValues : [0, 1], true);
     const rightRange = niceRange(rightValues.length ? rightValues : [0, 1], true);
+    const leftFormat = config.leftFormat || datasets.find(ds => ds.axis !== 'right')?.format;
+    const rightFormat = config.rightFormat || 'percent';
+    ctx.font = '10px Inter, Segoe UI, Arial, sans-serif';
+    const leftTickWidths = Array.from({ length: 6 }, (_, i) => {
+      const value = leftRange.min + (i / 5) * (leftRange.max - leftRange.min);
+      return ctx.measureText(formatValue(value, leftFormat)).width;
+    });
+    const rightTickWidths = rightValues.length ? Array.from({ length: 6 }, (_, i) => {
+      const value = rightRange.min + (i / 5) * (rightRange.max - rightRange.min);
+      return ctx.measureText(formatValue(value, rightFormat)).width;
+    }) : [0];
+    const margin = {
+      left: Math.max(66, Math.min(112, Math.ceil(Math.max(...leftTickWidths)) + 12)),
+      right: rightValues.length ? Math.max(58, Math.min(88, Math.ceil(Math.max(...rightTickWidths)) + 12)) : 24,
+      top: Math.max(56, legendBottom + 8),
+      bottom: 58
+    };
+    const plot = { x: margin.left, y: margin.top, w: width - margin.left - margin.right, h: height - margin.top - margin.bottom };
     const yFor = (value, axis) => {
       const range = axis === 'right' ? rightRange : leftRange;
       return plot.y + plot.h - ((Number(value) - range.min) / (range.max - range.min)) * plot.h;
@@ -191,11 +232,11 @@
       ctx.beginPath(); ctx.moveTo(plot.x, y); ctx.lineTo(plot.x + plot.w, y); ctx.stroke();
       const leftValue = leftRange.min + ratio * (leftRange.max - leftRange.min);
       ctx.fillStyle = COLORS.text; ctx.textAlign = 'right';
-      ctx.fillText(compactValue(leftValue, config.leftFormat || datasets.find(ds => ds.axis !== 'right')?.format), plot.x - 8, y);
+      ctx.fillText(formatValue(leftValue, leftFormat), plot.x - 8, y);
       if (rightValues.length) {
         const rightValue = rightRange.min + ratio * (rightRange.max - rightRange.min);
         ctx.textAlign = 'left';
-        ctx.fillText(compactValue(rightValue, config.rightFormat || 'percent'), plot.x + plot.w + 8, y);
+        ctx.fillText(formatValue(rightValue, rightFormat), plot.x + plot.w + 8, y);
       }
     }
     const zeroY = yFor(0, 'left');
@@ -221,6 +262,19 @@
         ctx.globalAlpha = ds.opacity || .92;
         ctx.fillRect(x, top, barWidth - 2, h);
         ctx.globalAlpha = 1;
+        if (value !== 0 && ds.showDataLabels !== false) {
+          const fullLabel = formatValue(value, ds.format);
+          const crowded = slot < 62 || barDatasets.length > 2;
+          if (crowded) {
+            ctx.save();
+            ctx.translate(x + (barWidth - 2) / 2, value >= 0 ? Math.max(plot.y + 10, top - 5) : Math.min(plot.y + plot.h - 10, top + h + 5));
+            ctx.rotate(-Math.PI / 2);
+            drawDataLabel(ctx, fullLabel, 0, 0, { color: ds.color || COLORS.blue, fontSize: 8.5 });
+            ctx.restore();
+          } else {
+            drawDataLabel(ctx, fullLabel, x + (barWidth - 2) / 2, value >= 0 ? top - 8 : top + h + 8, { color: ds.color || COLORS.blue, fontSize: 8.5 });
+          }
+        }
         hits.push({ type: 'rect', x, y: top, w: barWidth - 2, h, clickable: !!config.onClickLabel,
           tooltip: `<strong>${label}</strong>${ds.label}: ${formatValue(value, ds.format)}`,
           action: config.onClickLabel ? () => config.onClickLabel(label, labelIndex, ds) : null });
@@ -239,6 +293,11 @@
       points.forEach((point, index) => {
         ctx.fillStyle = ds.color || COLORS.orange; ctx.beginPath(); ctx.arc(point.x, point.y, 3.8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = COLORS.white; ctx.lineWidth = 1.5; ctx.stroke();
+        if (point.value !== 0 && ds.showDataLabels !== false) {
+          const offset = 11 + (dsIndex % 2) * 11;
+          const labelY = Math.max(plot.y + 8, point.y - offset);
+          drawDataLabel(ctx, formatValue(point.value, ds.format), point.x, labelY, { color: ds.color || COLORS.orange, fontSize: 8.5 });
+        }
         hits.push({ type: 'point', x: point.x, y: point.y, radius: 8, clickable: !!config.onClickLabel,
           tooltip: `<strong>${labels[index]}</strong>${ds.label}: ${formatValue(point.value, ds.format)}`,
           action: config.onClickLabel ? () => config.onClickLabel(labels[index], index, ds) : null });
@@ -263,8 +322,10 @@
     const maxLabelWidth = Math.min(width * .48, Math.max(105, ...items.map(item => {
       ctx.font = '11px Inter, Segoe UI, Arial, sans-serif'; return ctx.measureText(item.label).width + 20;
     })));
-    const margin = { left: maxLabelWidth, right: 65, top: 16, bottom: 32 };
-    const plot = { x: margin.left, y: margin.top, w: width - margin.left - margin.right, h: height - margin.top - margin.bottom };
+    ctx.font = '800 9px Inter, Segoe UI, Arial, sans-serif';
+    const maxValueLabelWidth = Math.max(...items.map(item => ctx.measureText(formatValue(Number(item.value) || 0, config.format)).width));
+    const margin = { left: maxLabelWidth, right: Math.max(78, Math.min(width * .32, maxValueLabelWidth + 18)), top: 16, bottom: 32 };
+    const plot = { x: margin.left, y: margin.top, w: Math.max(80, width - margin.left - margin.right), h: height - margin.top - margin.bottom };
     const values = items.map(item => Number(item.value));
     const range = niceRange(values, true);
     const rowHeight = plot.h / items.length;
@@ -293,7 +354,7 @@
       ctx.textAlign = value >= 0 ? 'left' : 'right';
       ctx.fillStyle = item.color || config.color || (value < 0 ? COLORS.red : COLORS.blue);
       ctx.font = '800 10.5px Inter, Segoe UI, Arial, sans-serif';
-      ctx.fillText(compactValue(value, config.format), value >= 0 ? xValue + 6 : xValue - 6, centerY);
+      ctx.fillText(formatValue(value, config.format), value >= 0 ? xValue + 6 : xValue - 6, centerY);
       hits.push({ type: 'rect', x, y, w: Math.max(w, 4), h, clickable: !!config.onClick,
         tooltip: `<strong>${item.label}</strong>${config.valueLabel || 'Valor'}: ${formatValue(value, config.format)}${item.extraTooltip ? `<br>${item.extraTooltip}` : ''}`,
         action: config.onClick ? () => config.onClick(item, index) : null });
