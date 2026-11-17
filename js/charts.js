@@ -41,28 +41,43 @@
   }
 
 
-  // Dibuja etiquetas completas sobre las series. El fondo blanco evita que el
-  // texto se pierda sobre barras o líneas.
+  // Etiquetas adaptativas: muestran valor completo cuando hay espacio y
+  // formato abreviado cuando el gráfico está muy denso. El tooltip conserva
+  // siempre el valor completo.
   function drawDataLabel(ctx, text, x, y, options = {}) {
     if (text === null || text === undefined || text === '') return;
     const fontSize = options.fontSize || 9;
+    const color = options.color || COLORS.text;
     ctx.save();
     ctx.font = `800 ${fontSize}px Inter, Segoe UI, Arial, sans-serif`;
     ctx.textAlign = options.align || 'center';
     ctx.textBaseline = options.baseline || 'middle';
-    const paddingX = 3;
-    const paddingY = 2;
+    const paddingX = 4;
+    const paddingY = 2.5;
     const metrics = ctx.measureText(String(text));
     const textWidth = metrics.width;
     let left = x - textWidth / 2 - paddingX;
     if (ctx.textAlign === 'left') left = x - paddingX;
     if (ctx.textAlign === 'right') left = x - textWidth - paddingX;
     const top = y - fontSize / 2 - paddingY;
-    ctx.fillStyle = 'rgba(255,255,255,.88)';
-    ctx.fillRect(left, top, textWidth + paddingX * 2, fontSize + paddingY * 2);
-    ctx.fillStyle = options.color || COLORS.text;
+    ctx.fillStyle = 'rgba(255,255,255,.94)';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = .8;
+    if (typeof ctx.roundRect === 'function') {
+      ctx.beginPath();
+      ctx.roundRect(left, top, textWidth + paddingX * 2, fontSize + paddingY * 2, 3);
+      ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillRect(left, top, textWidth + paddingX * 2, fontSize + paddingY * 2);
+      ctx.strokeRect(left, top, textWidth + paddingX * 2, fontSize + paddingY * 2);
+    }
+    ctx.fillStyle = '#263248';
     ctx.fillText(String(text), x, y);
     ctx.restore();
+  }
+
+  function dataLabelText(value, format, dense) {
+    return dense ? compactValue(value, format) : formatValue(value, format);
   }
 
   function niceRange(values, includeZero = true) {
@@ -215,7 +230,7 @@
     const margin = {
       left: Math.max(66, Math.min(112, Math.ceil(Math.max(...leftTickWidths)) + 12)),
       right: rightValues.length ? Math.max(58, Math.min(88, Math.ceil(Math.max(...rightTickWidths)) + 12)) : 24,
-      top: Math.max(56, legendBottom + 8),
+      top: Math.max(68, legendBottom + 18),
       bottom: 58
     };
     const plot = { x: margin.left, y: margin.top, w: width - margin.left - margin.right, h: height - margin.top - margin.bottom };
@@ -263,17 +278,13 @@
         ctx.fillRect(x, top, barWidth - 2, h);
         ctx.globalAlpha = 1;
         if (value !== 0 && ds.showDataLabels !== false) {
-          const fullLabel = formatValue(value, ds.format);
-          const crowded = slot < 62 || barDatasets.length > 2;
-          if (crowded) {
-            ctx.save();
-            ctx.translate(x + (barWidth - 2) / 2, value >= 0 ? Math.max(plot.y + 10, top - 5) : Math.min(plot.y + plot.h - 10, top + h + 5));
-            ctx.rotate(-Math.PI / 2);
-            drawDataLabel(ctx, fullLabel, 0, 0, { color: ds.color || COLORS.blue, fontSize: 8.5 });
-            ctx.restore();
-          } else {
-            drawDataLabel(ctx, fullLabel, x + (barWidth - 2) / 2, value >= 0 ? top - 8 : top + h + 8, { color: ds.color || COLORS.blue, fontSize: 8.5 });
-          }
+          const dense = slot < 86 || barDatasets.length > 2 || width < 760;
+          const labelText = dataLabelText(value, ds.format, dense);
+          const level = barIndex % 3;
+          const labelY = value >= 0
+            ? Math.max(plot.y + 8 + level * 13, top - 9 - level * 12)
+            : Math.min(plot.y + plot.h - 8 - level * 13, top + h + 9 + level * 12);
+          drawDataLabel(ctx, labelText, x + (barWidth - 2) / 2, labelY, { color: ds.color || COLORS.blue, fontSize: dense ? 8 : 8.5 });
         }
         hits.push({ type: 'rect', x, y: top, w: barWidth - 2, h, clickable: !!config.onClickLabel,
           tooltip: `<strong>${label}</strong>${ds.label}: ${formatValue(value, ds.format)}`,
@@ -294,9 +305,10 @@
         ctx.fillStyle = ds.color || COLORS.orange; ctx.beginPath(); ctx.arc(point.x, point.y, 3.8, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = COLORS.white; ctx.lineWidth = 1.5; ctx.stroke();
         if (point.value !== 0 && ds.showDataLabels !== false) {
-          const offset = 11 + (dsIndex % 2) * 11;
+          const dense = slot < 86 || width < 760;
+          const offset = 12 + (dsIndex % 3) * 13;
           const labelY = Math.max(plot.y + 8, point.y - offset);
-          drawDataLabel(ctx, formatValue(point.value, ds.format), point.x, labelY, { color: ds.color || COLORS.orange, fontSize: 8.5 });
+          drawDataLabel(ctx, dataLabelText(point.value, ds.format, dense), point.x, labelY, { color: ds.color || COLORS.orange, fontSize: dense ? 8 : 8.5 });
         }
         hits.push({ type: 'point', x: point.x, y: point.y, radius: 8, clickable: !!config.onClickLabel,
           tooltip: `<strong>${labels[index]}</strong>${ds.label}: ${formatValue(point.value, ds.format)}`,
@@ -354,7 +366,7 @@
       ctx.textAlign = value >= 0 ? 'left' : 'right';
       ctx.fillStyle = item.color || config.color || (value < 0 ? COLORS.red : COLORS.blue);
       ctx.font = '800 10.5px Inter, Segoe UI, Arial, sans-serif';
-      ctx.fillText(formatValue(value, config.format), value >= 0 ? xValue + 6 : xValue - 6, centerY);
+      ctx.fillText(width < 720 ? compactValue(value, config.format) : formatValue(value, config.format), value >= 0 ? xValue + 6 : xValue - 6, centerY);
       hits.push({ type: 'rect', x, y, w: Math.max(w, 4), h, clickable: !!config.onClick,
         tooltip: `<strong>${item.label}</strong>${config.valueLabel || 'Valor'}: ${formatValue(value, config.format)}${item.extraTooltip ? `<br>${item.extraTooltip}` : ''}`,
         action: config.onClick ? () => config.onClick(item, index) : null });

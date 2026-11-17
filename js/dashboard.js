@@ -387,87 +387,73 @@
     }), { onRowClick: index => filterRequest?.('carrier', byServices[index].label) });
   }
 
-  function regionColor(value, max, baseColor, lightColor) {
-    const ratio = max ? Math.max(.2, value / max) : .2;
-    return ratio > .65 ? baseColor : ratio > .35 ? lightColor : '#dce4f7';
-  }
-
-  function renderGeoMap(regionGroups, filters) {
-    const container = clear('geoSchematicMap');
-    if (!container) return;
-    const map = new Map(regionGroups.map(item => [item.label.toUpperCase(), item]));
-    const rg = map.get('RG') || { services: 0, pallets: 0 };
-    const rm = map.get('RM') || { services: 0, pallets: 0 };
-    const max = Math.max(rg.services, rm.services, 1);
-    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('viewBox','0 0 420 520'); svg.classList.add('geo-schematic'); svg.setAttribute('role','img');
-    svg.setAttribute('aria-label','Mapa esquemático de servicios en Región Metropolitana y Regiones');
-    const title = document.createElementNS(svg.namespaceURI,'text'); title.setAttribute('x','210'); title.setAttribute('y','28'); title.setAttribute('text-anchor','middle'); title.setAttribute('class','geo-label'); title.textContent='Clasificación geográfica del archivo'; svg.appendChild(title);
-
-    const makeGroup = (code, label, x, y, w, h, data, fill) => {
-      const g = document.createElementNS(svg.namespaceURI,'g'); g.classList.add('geo-segment'); g.setAttribute('tabindex','0');
-      const rect = document.createElementNS(svg.namespaceURI,'rect'); rect.setAttribute('x',x); rect.setAttribute('y',y); rect.setAttribute('width',w); rect.setAttribute('height',h); rect.setAttribute('rx','24'); rect.setAttribute('fill',fill); rect.setAttribute('stroke',filters.region===code?COLORS.orange:'#c4cee2'); rect.setAttribute('stroke-width',filters.region===code?'6':'2');
-      const t1 = document.createElementNS(svg.namespaceURI,'text'); t1.setAttribute('x',x+w/2); t1.setAttribute('y',y+h/2-15); t1.setAttribute('text-anchor','middle'); t1.setAttribute('class','geo-value'); t1.setAttribute('font-size','26'); t1.textContent=code;
-      const t2 = document.createElementNS(svg.namespaceURI,'text'); t2.setAttribute('x',x+w/2); t2.setAttribute('y',y+h/2+14); t2.setAttribute('text-anchor','middle'); t2.setAttribute('class','geo-value'); t2.setAttribute('font-size','18'); t2.textContent=C.formatNumber(data.services,0)+' servicios';
-      const t3 = document.createElementNS(svg.namespaceURI,'text'); t3.setAttribute('x',x+w/2); t3.setAttribute('y',y+h/2+39); t3.setAttribute('text-anchor','middle'); t3.setAttribute('fill','#ffffff'); t3.setAttribute('font-size','12'); t3.textContent=C.formatNumber(data.pallets,1)+' pallets';
-      g.append(rect,t1,t2,t3); g.addEventListener('click',()=>filterRequest?.('region',filters.region===code?'':code)); g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();filterRequest?.('region',filters.region===code?'':code);}}); svg.appendChild(g);
-      const labelText = document.createElementNS(svg.namespaceURI,'text'); labelText.setAttribute('x',x+w+14); labelText.setAttribute('y',y+h/2); labelText.setAttribute('class','geo-label'); labelText.setAttribute('font-size','13'); labelText.textContent=label; svg.appendChild(labelText);
-    };
-    makeGroup('RG','Regiones',100,55,120,300,rg,regionColor(rg.services,max,COLORS.blue,COLORS.blueLight));
-    makeGroup('RM','Región Metropolitana',128,370,64,90,rm,regionColor(rm.services,max,COLORS.orange,COLORS.orangeLight));
-    const note=document.createElementNS(svg.namespaceURI,'text'); note.setAttribute('x','210'); note.setAttribute('y','500'); note.setAttribute('text-anchor','middle'); note.setAttribute('fill','#667085'); note.setAttribute('font-size','11'); note.textContent='Representación esquemática: no utiliza coordenadas geográficas.'; svg.appendChild(note);
-    container.appendChild(svg);
-  }
-
   function renderGeography(context) {
-    const { currentRecords, filters } = context;
+    const { currentRecords } = context;
     const regions = C.sortGroups(C.group(currentRecords, '__region'), 'services');
-    renderGeoMap(regions, filters);
-    const destinations = C.sortGroups(C.group(currentRecords, '__destination'), 'services').slice(0,20);
+    const destinationsAll = C.sortGroups(C.group(currentRecords, '__destination'), 'services');
+    const mapped = [];
+    const unmapped = [];
+
+    destinationsAll.forEach((item, index) => {
+      const location = global.GeographyData?.resolve(item.label);
+      if (!location) {
+        unmapped.push(item);
+        return;
+      }
+      mapped.push({
+        ...item,
+        ...location,
+        rank: index + 1,
+        palletsLabel: C.formatNumber(item.pallets, 1),
+        saleLabel: C.formatCurrency(item.sale)
+      });
+    });
+
+    const totalServices = C.metrics(currentRecords).services;
+    const mappedServices = mapped.reduce((sum, item) => sum + item.services, 0);
+    const coverage = totalServices > 0 ? mappedServices / totalServices : 0;
+    const topDestination = destinationsAll[0];
+
+    renderKpis('geoKpis', [
+      { label: 'Destinos distintos', value: C.formatNumber(destinationsAll.length, 0), note: 'Según columna Destino', tone: 'accent' },
+      { label: 'Destinos georreferenciados', value: C.formatNumber(mapped.length, 0), note: `${C.formatPercent(coverage, 1)} de los servicios`, tone: 'positive' },
+      { label: 'Destino más visitado', value: topDestination?.label || 'Sin datos', note: topDestination ? `${C.formatNumber(topDestination.services,0)} servicios` : '' },
+      { label: 'Sin coordenadas', value: C.formatNumber(unmapped.length, 0), note: 'Localidades no homologadas', tone: unmapped.length ? '' : 'positive' }
+    ]);
+
+    global.GeoMap?.render('geoVisitMap', mapped, {
+      onPointClick: point => filterRequest?.('destination', point.label === 'Sin información' ? '' : point.label)
+    });
+
+    const coverageNote = byId('geoMapCoverageNote');
+    if (coverageNote) {
+      const missingText = unmapped.length
+        ? ` · ${unmapped.length} destinos sin coordenadas homologadas: ${unmapped.slice(0,5).map(item=>item.label).join(', ')}${unmapped.length>5?'…':''}`
+        : '';
+      coverageNote.textContent = `Mapa: ${mapped.length} destinos georreferenciados · ${C.formatNumber(mappedServices,0)} servicios representados (${C.formatPercent(coverage,1)})${missingText}`;
+    }
+
+    const destinations = destinationsAll.slice(0, 20);
     global.Charts.horizontalBars('geoDestinationsChart', {
       items: destinations.map(item => ({ label:item.label,value:item.services,extraTooltip:`Pallets: ${C.formatNumber(item.pallets,1)} · Venta: ${C.formatCurrency(item.sale)}` })),
       format:'number',valueLabel:'Servicios',color:COLORS.orange,onClick:item=>filterRequest?.('destination',item.label==='Sin información'?'':item.label)
     });
+
+    createTable('destinationSummaryTable',['Destino','Servicios','Pallets','Venta','Utilidad','Margen'],destinationsAll.slice(0,30).map(item=>[
+      item.label,
+      cell(C.formatNumber(item.services,0),'numeric'),
+      cell(C.formatNumber(item.pallets,1),'numeric'),
+      cell(C.formatCurrency(item.sale),'numeric'),
+      cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`),
+      cell(C.formatPercent(item.margin,1),`numeric ${item.margin<0?'negative-text':''}`)
+    ]),{onRowClick:index=>filterRequest?.('destination',destinationsAll[index].label==='Sin información'?'':destinationsAll[index].label)});
+
     createTable('regionSummaryTable',['Clasificación','Servicios','Pallets','Venta','Costo','Utilidad','Margen'],regions.map(item=>[
       item.label,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,1),'numeric'),cell(C.formatCurrency(item.sale),'numeric'),cell(C.formatCurrency(item.cost),'numeric'),cell(C.formatCurrency(item.profit),`numeric ${item.profit<0?'negative-text':'positive-text'}`),cell(C.formatPercent(item.margin,1),'numeric')
     ]),{onRowClick:index=>filterRequest?.('region',regions[index].label==='Sin información'?'':regions[index].label)});
+
     const addresses=C.destinationAddressGroups(currentRecords,25);
     createTable('destinationAddressTable',['Destino','Dirección','Servicios','Pallets'],addresses.map(item=>[item.destination,item.address,cell(C.formatNumber(item.services,0),'numeric'),cell(C.formatNumber(item.pallets,1),'numeric')]));
-  }
-
-  function renderFinance(context) {
-    const { currentRecords, previousRecords } = context;
-    const { current, variation } = metricComparison(currentRecords, previousRecords);
-    const alerts=C.financialAlerts(currentRecords);
-    renderKpis('financeKpis',[
-      {label:'Venta total',value:C.formatCurrency(current.sale),variation:variation.sale,note:'Venta Total',tone:'accent'},
-      {label:'Costo total',value:C.formatCurrency(current.cost),variation:variation.cost,favorableLower:true,note:'Costo Total'},
-      {label:'Utilidad total',value:C.formatCurrency(current.profit),variation:variation.profit,note:'Venta - Costo',tone:current.profit<0?'negative':'positive'},
-      {label:'Margen',value:C.formatPercent(current.margin,1),variation:variation.margin,note:'Utilidad / Venta',tone:current.margin<0?'negative':'positive'},
-      {label:'Servicios con margen negativo',value:C.formatNumber(alerts.negativeMargin.length,0),note:'Requieren revisión',tone:alerts.negativeMargin.length?'negative':'positive'},
-      {label:'Servicios sin venta',value:C.formatNumber(alerts.noSale.length,0),note:'Venta Total = 0',tone:alerts.noSale.length?'negative':'positive'},
-      {label:'Servicios sin costo',value:C.formatNumber(alerts.noCost.length,0),note:'Costo Total = 0',tone:alerts.noCost.length?'negative':'positive'},
-      {label:'Costo mayor que venta',value:C.formatNumber(alerts.costOverSale.length,0),note:'Pérdida potencial',tone:alerts.costOverSale.length?'negative':'positive'}
-    ]);
-    const monthly=monthlyData(currentRecords);
-    global.Charts.mixed('financeTrendChart',{
-      labels:monthly.map(item=>item.monthShort),datasets:[
-        {type:'bar',label:'Ventas',data:monthly.map(item=>item.sale),color:COLORS.orange,format:'currency'},
-        {type:'bar',label:'Costos',data:monthly.map(item=>item.cost),color:COLORS.blue,format:'currency'},
-        {type:'line',label:'Utilidad',data:monthly.map(item=>item.profit),color:COLORS.green,format:'currency'},
-        {type:'line',label:'Margen',data:monthly.map(item=>item.margin),color:COLORS.red,axis:'right',format:'percent'}
-      ],leftFormat:'currency',rightFormat:'percent',onClickLabel:(_,index)=>filterRequest?.('month',index+1)
-    });
-    const carriers=C.sortGroups(C.group(currentRecords,'__carrier'),'cost').slice(0,14);
-    global.Charts.horizontalBars('costByCarrierChart',{items:carriers.map(item=>({label:item.label,value:item.cost,extraTooltip:`Utilidad: ${C.formatCurrency(item.profit)} · Margen: ${C.formatPercent(item.margin,1)}`})),format:'currency',valueLabel:'Costo',color:COLORS.blue,onClick:item=>filterRequest?.('carrier',item.label)});
-    const negative=C.negativeMarginRows(currentRecords,25);
-    createTable('negativeMarginTable',['Fecha','ID','Cliente','Transportista','Venta','Costo','Pérdida','Margen'],negative.map(item=>[
-      C.formatDate(item.__date),item.__id||'Sin ID',item.__client||'Sin cliente',item.__carrier||'Sin transportista',cell(C.formatCurrency(item.__sale),'numeric'),cell(C.formatCurrency(item.__cost),'numeric'),cell(C.formatCurrency(item.__profit),'numeric negative-text'),cell(C.formatPercent(item.__margin,1),'numeric negative-text')
-    ]),{onRowClick:index=>showRecord(negative[index])});
-    const alertRows=[
-      ['Servicios sin costo',alerts.noCost.length,'Costo Total = 0'],['Servicios sin venta',alerts.noSale.length,'Venta Total = 0'],['Costo mayor que venta',alerts.costOverSale.length,'Costo Total > Venta Total'],['Margen negativo',alerts.negativeMargin.length,'Utilidad < 0'],['Registros incompletos',alerts.incomplete.length,'Campos esenciales ausentes'],['Duplicados potenciales',alerts.potentialDuplicate.length,'Coincidencia de fecha, cliente, pedido, guía y dirección']
-    ];
-    createTable('financeAlertsTable',['Alerta','Registros','Criterio'],alertRows.map(row=>[row[0],cell(C.formatNumber(row[1],0),`numeric ${row[1]?'negative-text':'positive-text'}`),row[2]]));
   }
 
   function renderDetail(context) {
@@ -490,7 +476,7 @@
     const observations=[
       `La hoja “${dataset.sheetName}” fue encontrada y la fila de encabezados se identificó en la fila ${dataset.headerRow}.`,
       `El servicio se cuenta por ID único. Cuando falta el ID, se utiliza una llave de respaldo basada en fecha, cliente, pedido, guía y dirección.`,
-      `La fecha principal es “${dataset.mapping.deliveryDate || 'no encontrada'}”; si está vacía o fuera de rango se intenta “Fecha de necesidad” y luego “Fecha de Solicitud”.`,
+      `El período del dashboard se calcula exclusivamente con “${dataset.mapping.needDate || 'Fecha de necesidad'}”, correspondiente a la columna C del archivo.`,
       `La columna “${dataset.mapping.region || 'Region'}” contiene principalmente RM y RG; no corresponde a las 16 regiones administrativas de Chile.`,
       `Pallets utiliza “${dataset.mapping.palletsDelivered || 'Pallets Entregados'}” y, cuando está vacío, “${dataset.mapping.palletsRequested || 'Pallets solicitados'}”.`,
       `Utilidad y margen se recalculan desde Venta Total y Costo Total, evitando depender de fórmulas almacenadas o divisiones por cero.`
@@ -529,7 +515,6 @@
     else if(activeView==='clients') renderClients(context);
     else if(activeView==='carriers') renderCarriers(context);
     else if(activeView==='geography') renderGeography(context);
-    else if(activeView==='finance') renderFinance(context);
     else if(activeView==='detail') renderDetail(context);
   }
 
