@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Dashboard local para analizar la planificación diaria de transporte de Warehousing Chile.">
   <title>Dashboard de Transporte | Warehousing</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261117-comparacion-v4">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+  <link rel="stylesheet" href="css/styles.css?v=20261117-mapa-v5">
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -55,7 +56,6 @@
         <button class="nav-item" data-view="clients"><span>◉</span> Clientes</button>
         <button class="nav-item" data-view="carriers"><span>▰</span> Empresas de Transporte</button>
         <button class="nav-item" data-view="geography"><span>⌖</span> Distribución Geográfica</button>
-        <button class="nav-item" data-view="finance"><span>$</span> Costos y Ventas</button>
         <button class="nav-item" data-view="detail"><span>≣</span> Detalle de Registros</button>
         <div class="sidebar-footer">
           <small>Hoja esperada</small>
@@ -208,29 +208,26 @@
 
           <section id="view-geography" class="dashboard-view" data-view-panel="geography">
             <div class="section-heading"><div><span class="eyebrow">Cobertura</span><h2>Distribución Geográfica</h2></div></div>
-            <div class="data-note warning"><strong>Dato disponible:</strong> la columna “Region” contiene las categorías RM y RG, y “Destino” contiene comuna o ciudad. No existe una columna de origen ni coordenadas sistemáticas; por eso el mapa es esquemático y no inventa ubicaciones.</div>
-            <div class="content-grid geo-grid">
-              <article class="card"><div class="card-header"><div><h3>Mapa esquemático de cobertura</h3><p>Haz clic en RM o Regiones para filtrar</p></div></div><div id="geoSchematicMap" class="geo-map"></div></article>
-              <article class="card chart-card"><div class="card-header"><div><h3>Servicios por destino</h3><p>Principales comunas o ciudades</p></div><button class="icon-btn" data-download-chart="geoDestinationsChart">⇩</button></div><canvas id="geoDestinationsChart" class="chart-canvas" height="470"></canvas></article>
+            <div class="data-note info geo-note"><strong>Mapa de frecuencia:</strong> los puntos representan el centro de la comuna o ciudad indicada en “Destino”; el tamaño refleja la cantidad de servicios. No se muestran direcciones exactas ni se geocodifica el Excel en servicios externos.</div>
+            <div id="geoKpis" class="kpi-grid geo-kpi-grid"></div>
+            <article class="card geo-map-card">
+              <div class="card-header">
+                <div><h3>Mapa de destinos más visitados</h3><p>Haz clic en un punto para filtrar el destino · los 6 principales quedan etiquetados</p></div>
+              </div>
+              <div class="map-legend" aria-label="Leyenda del mapa"><span><i class="dot dot-high"></i> Alta frecuencia</span><span><i class="dot dot-mid"></i> Frecuencia media</span><span><i class="dot dot-low"></i> Menor frecuencia</span></div>
+              <div id="geoVisitMap" class="geo-visit-map" aria-label="Mapa interactivo de destinos"></div>
+              <div id="geoMapCoverageNote" class="map-coverage-note"></div>
+            </article>
+            <div class="content-grid two-columns geography-lower-grid">
+              <article class="card chart-card"><div class="card-header"><div><h3>Ranking de destinos</h3><p>Servicios por comuna o ciudad</p></div><button class="icon-btn" data-download-chart="geoDestinationsChart">⇩</button></div><canvas id="geoDestinationsChart" class="chart-canvas" height="470"></canvas></article>
+              <article class="card"><div class="card-header"><div><h3>Detalle de destinos</h3><p>Servicios, pallets, venta y margen por destino</p></div></div><div id="destinationSummaryTable" class="table-wrap"></div></article>
             </div>
             <div class="content-grid two-columns">
-              <article class="card"><div class="card-header"><div><h3>Resumen por categoría geográfica</h3><p>RM y RG según la clasificación del archivo</p></div></div><div id="regionSummaryTable" class="table-wrap"></div></article>
-              <article class="card"><div class="card-header"><div><h3>Destinos y direcciones frecuentes</h3><p>No se calcula ruta origen-destino porque el origen no está registrado</p></div></div><div id="destinationAddressTable" class="table-wrap"></div></article>
+              <article class="card"><div class="card-header"><div><h3>Resumen RM / Regiones</h3><p>Clasificación disponible en la planilla</p></div></div><div id="regionSummaryTable" class="table-wrap"></div></article>
+              <article class="card"><div class="card-header"><div><h3>Destinos y direcciones frecuentes</h3><p>Detalle operativo de los puntos informados</p></div></div><div id="destinationAddressTable" class="table-wrap"></div></article>
             </div>
           </section>
 
-          <section id="view-finance" class="dashboard-view" data-view-panel="finance">
-            <div class="section-heading"><div><span class="eyebrow">Rentabilidad</span><h2>Costos, Ventas y Margen</h2></div></div>
-            <div id="financeKpis" class="kpi-grid"></div>
-            <div class="content-grid two-columns">
-              <article class="card chart-card"><div class="card-header"><div><h3>Evolución financiera mensual</h3><p>Ventas, costos, utilidad y margen</p></div><button class="icon-btn" data-download-chart="financeTrendChart">⇩</button></div><canvas id="financeTrendChart" class="chart-canvas" height="350"></canvas></article>
-              <article class="card chart-card"><div class="card-header"><div><h3>Costo por empresa transportista</h3><p>Detalle del gasto de transporte</p></div><button class="icon-btn" data-download-chart="costByCarrierChart">⇩</button></div><canvas id="costByCarrierChart" class="chart-canvas" height="350"></canvas></article>
-            </div>
-            <div class="content-grid two-columns">
-              <article class="card"><div class="card-header"><div><h3>Servicios con margen negativo</h3><p>Prioriza la revisión de los casos de mayor pérdida</p></div></div><div id="negativeMarginTable" class="table-wrap"></div></article>
-              <article class="card"><div class="card-header"><div><h3>Alertas de calidad financiera</h3><p>Servicios sin costo, sin venta o con inconsistencias</p></div></div><div id="financeAlertsTable" class="table-wrap"></div></article>
-            </div>
-          </section>
 
           <section id="view-detail" class="dashboard-view" data-view-panel="detail">
             <div class="section-heading"><div><span class="eyebrow">Base completa</span><h2>Detalle de Registros</h2></div></div>
@@ -287,9 +284,13 @@
   <script src="js/excel-reader.js?v=20260728-columna-c-v2"></script>
   <script src="js/calculations.js"></script>
   <script src="js/filters.js"></script>
-  <script src="js/charts.js?v=20261117-comparacion-v4"></script>
+  <script src="js/charts.js?v=20261117-mapa-v5"></script>
   <script src="js/table.js"></script>
-  <script src="js/dashboard.js?v=20261117-comparacion-v4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+  <script src="js/geography-data.js?v=20261117-mapa-v5"></script>
+  <script src="js/geo-map.js?v=20261117-mapa-v5"></script>
+  <script src="js/dashboard.js?v=20261117-mapa-v5"></script>
+  <script src="js/ui-enhancements.js?v=20261117-mapa-v5"></script>
   <!-- En GitHub Pages la planilla se carga desde la carpeta data. -->
   <script src="js/app.js?v=20260728-columna-c-v2"></script>
 </body>
