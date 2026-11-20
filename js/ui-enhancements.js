@@ -102,13 +102,34 @@
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'filters-toggle';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.textContent = 'Más filtros';
+    const mobileFilters = () => window.matchMedia('(max-width: 760px)').matches;
+    const syncFilterMode = () => {
+      if (mobileFilters()) {
+        const collapsed = !panel.classList.contains('filters-expanded');
+        panel.classList.toggle('filters-mobile-collapsed', collapsed);
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.textContent = collapsed ? 'Mostrar filtros' : 'Ocultar filtros';
+      } else {
+        panel.classList.remove('filters-mobile-collapsed');
+        toggle.setAttribute('aria-expanded', String(panel.classList.contains('filters-expanded')));
+        toggle.textContent = panel.classList.contains('filters-expanded') ? 'Menos filtros' : 'Más filtros';
+      }
+    };
+    syncFilterMode();
     toggle.addEventListener('click', () => {
+      if (mobileFilters()) {
+        const opening = panel.classList.contains('filters-mobile-collapsed');
+        panel.classList.toggle('filters-mobile-collapsed', !opening);
+        panel.classList.toggle('filters-expanded', opening);
+        toggle.setAttribute('aria-expanded', String(opening));
+        toggle.textContent = opening ? 'Ocultar filtros' : 'Mostrar filtros';
+        return;
+      }
       const expanded = panel.classList.toggle('filters-expanded');
       toggle.setAttribute('aria-expanded', String(expanded));
       toggle.textContent = expanded ? 'Menos filtros' : 'Más filtros';
     });
+    window.addEventListener('resize', syncFilterMode, { passive: true });
     heading.appendChild(toggle);
     panel.prepend(heading);
 

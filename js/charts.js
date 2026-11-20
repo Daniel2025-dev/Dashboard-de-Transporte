@@ -22,9 +22,20 @@
     const cssWidth = Math.max(300, Math.round(rect.width || containerWidth));
     const requestedHeight = Math.max(240, Number(canvas.getAttribute('height')) || 330);
     const expanded = Boolean(canvas.closest('.card')?.classList.contains('is-expanded'));
-    // Debe coincidir exactamente con la altura final definida en CSS.
-    const expandedHeight = window.matchMedia('(max-width: 760px)').matches ? 400 : 460;
-    const cssHeight = expanded ? expandedHeight : requestedHeight;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 1280;
+    // Alturas proporcionales por dispositivo: evita gráficos gigantes en móvil
+    // y aprovecha pantallas de presentación sin deformar el contenido.
+    const responsiveHeight = viewportWidth <= 430
+      ? Math.min(requestedHeight, 280)
+      : viewportWidth <= 760
+        ? Math.min(requestedHeight, 310)
+        : viewportWidth >= 1920
+          ? Math.min(460, Math.max(requestedHeight, 360))
+          : requestedHeight;
+    const expandedHeight = viewportWidth <= 760
+      ? Math.max(360, window.innerHeight - 150)
+      : Math.min(620, Math.max(460, window.innerHeight - 190));
+    const cssHeight = expanded ? expandedHeight : responsiveHeight;
 
     // Regla v8: el canvas nunca modifica por sí solo el ancho de la tarjeta.
     canvas.style.width = '100%';

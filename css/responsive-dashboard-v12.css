@@ -1,0 +1,208 @@
+/* Responsive v12 — capa final para móvil, tablet, notebook, escritorio y TV. */
+html { overflow-x: clip; }
+body, .app-shell { width: 100%; max-width: 100%; }
+img, canvas, svg { max-width: 100%; }
+.main-layout, .main-content, .dashboard-view, .content-grid, .card { min-width: 0; }
+.chart-card .chart-canvas,
+canvas.chart-canvas {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.table-wrap, .data-grid {
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #a8b8ca #edf2f7;
+}
+.table-wrap::-webkit-scrollbar, .data-grid::-webkit-scrollbar { height: 9px; width: 9px; }
+.table-wrap::-webkit-scrollbar-thumb, .data-grid::-webkit-scrollbar-thumb { background: #a8b8ca; border-radius: 999px; }
+.table-wrap::-webkit-scrollbar-track, .data-grid::-webkit-scrollbar-track { background: #edf2f7; }
+
+/* Notebook estándar: cabecera en dos niveles, contenido respirable. */
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .topbar { grid-template-columns: minmax(300px, 1fr) minmax(280px, .85fr); gap: 12px 20px; }
+  .top-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .main-content { padding-inline: clamp(16px, 2vw, 26px); }
+  .filters-panel { position: static; grid-template-columns: 1fr 1fr 1.5fr 1.5fr auto; }
+  .sidebar { top: 159px; height: calc(100vh - 159px); }
+  .content-grid.three-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .content-grid.three-columns > :last-child { grid-column: 1 / -1; }
+}
+
+/* Tablet y notebook compacto: navegación superior desplazable. */
+@media (max-width: 1100px) {
+  .topbar { position: static; grid-template-columns: minmax(280px, 1fr) minmax(250px, .85fr); padding: 12px 16px; gap: 12px; }
+  .top-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  .privacy-banner { position: static; }
+  .main-layout { display: block; min-height: 0; }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    width: 100%;
+    height: auto;
+    padding: 7px 10px;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    background: linear-gradient(90deg, #0b2f5b, #123f75);
+  }
+  .nav-item {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
+    min-height: 42px;
+    padding: 9px 13px;
+    justify-content: flex-start;
+    font-size: .78rem;
+  }
+  .nav-item span { width: 20px; font-size: .95rem; }
+  .sidebar-footer { display: none; }
+  .main-content { padding: 16px 14px 34px; }
+  .filters-panel,
+  .filters-panel.filters-expanded {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 16px;
+  }
+  .filters-panel .filter-field.wide,
+  .filters-panel.filters-expanded .filter-field.wide { grid-column: auto; }
+  .filters-panel > .btn { grid-column: span 2; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .content-grid.two-columns,
+  .content-grid.three-columns,
+  .content-grid.geo-grid,
+  .geography-lower-grid { grid-template-columns: 1fr; }
+  .content-grid.three-columns > :last-child { grid-column: auto; }
+  .card.is-expanded { inset: 10px !important; max-height: calc(100dvh - 20px) !important; }
+  .card.is-expanded .chart-canvas { min-width: 0 !important; width: 100% !important; }
+  .column-chooser { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+}
+
+/* Teléfono grande y tablet vertical. */
+@media (max-width: 760px) {
+  .topbar { display: grid; grid-template-columns: 1fr; padding: 12px; }
+  .brand-block { align-items: center; gap: 12px; }
+  .brand-logo { width: min(165px, 44vw); max-width: 165px; }
+  .brand-block h1 { font-size: 1.1rem; }
+  .brand-block p { margin-top: 3px; font-size: .76rem; }
+  .file-status { width: 100%; min-height: 54px; }
+  .top-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; }
+  .top-actions .btn { width: 100%; min-width: 0; min-height: 44px; padding-inline: 8px; white-space: normal; line-height: 1.2; }
+  .privacy-banner { padding: 8px 12px; text-align: left; font-size: .72rem; line-height: 1.35; }
+  .sidebar { padding-inline: 8px; }
+  .nav-item { min-height: 44px; padding: 9px 12px; font-size: .76rem; }
+  .main-content { padding: 12px 10px 28px; }
+  .filters-panel,
+  .filters-panel.filters-expanded { padding: 12px; gap: 10px; }
+  .filters-panel.filters-mobile-collapsed { display: block; }
+  .filters-panel.filters-mobile-collapsed > .filter-field,
+  .filters-panel.filters-mobile-collapsed > .btn { display: none !important; }
+  .filters-panel.filters-mobile-collapsed .filters-heading { margin: 0; }
+  .filters-heading { grid-column: 1 / -1; }
+  .filter-field select, .filter-field input { min-height: 44px; font-size: 1rem; }
+  .section-heading { margin-block: 5px 13px; }
+  .section-heading h2 { font-size: 1.35rem; }
+  .period-label { font-size: .74rem; }
+  .kpi-grid { gap: 10px; margin-bottom: 14px; }
+  .kpi-card { min-height: 118px; padding: 14px 13px 12px; }
+  .kpi-value { font-size: clamp(1.15rem, 5vw, 1.42rem); }
+  .content-grid { gap: 12px; margin-bottom: 12px; }
+  .card { padding: 13px; border-radius: 13px; }
+  .card-header { min-height: 42px; gap: 8px; }
+  .card-header h3 { font-size: .94rem; line-height: 1.3; }
+  .card-header p { font-size: .74rem; }
+  .icon-btn { flex: 0 0 auto; width: 40px; height: 40px; }
+  .chart-card { overflow: hidden !important; }
+  .chart-canvas { min-height: 260px !important; }
+  .chart-tooltip { max-width: calc(100vw - 24px); white-space: normal; }
+  .table-wrap { max-height: 70vh; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 620px; }
+  .table-wrap th, .table-wrap td { padding: 10px; }
+  .detail-toolbar { display: grid; grid-template-columns: 1fr 1fr; padding: 11px; }
+  .detail-toolbar .search-box { grid-column: 1 / -1; width: 100%; }
+  .detail-toolbar label { grid-column: 1 / -1; justify-content: space-between; }
+  .detail-toolbar .btn { width: 100%; min-height: 44px; white-space: normal; }
+  .data-grid { max-height: 66vh; -webkit-overflow-scrolling: touch; }
+  .column-chooser { grid-template-columns: 1fr; }
+  .pagination { align-items: stretch; }
+  .pagination-actions { width: 100%; justify-content: space-between; }
+  .pagination button { min-width: 42px; min-height: 38px; }
+  .geo-visit-map { height: min(58vh, 440px) !important; min-height: 330px; }
+  .map-legend { gap: 8px 12px; }
+  .modal { align-items: end; padding: 8px; }
+  .modal-dialog, .modal-dialog.large { width: 100%; max-height: calc(100dvh - 16px); border-radius: 16px 16px 10px 10px; }
+  .modal-header { padding: 14px 15px; }
+  .modal-body { max-height: calc(100dvh - 86px); padding: 14px; }
+  .quality-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .record-detail { grid-template-columns: 1fr; }
+  .card.is-expanded { inset: 4px !important; max-height: calc(100dvh - 8px) !important; padding: 10px !important; border-radius: 12px !important; }
+  .card.is-expanded > .card-header { position: sticky; top: 0; z-index: 5; }
+  .card.is-expanded .chart-canvas { min-width: 0 !important; min-height: 360px !important; }
+}
+
+/* Teléfono angosto. */
+@media (max-width: 480px) {
+  .brand-block { align-items: flex-start; }
+  .brand-logo { width: 132px; }
+  .brand-block h1 { font-size: 1rem; }
+  .file-status strong { font-size: .78rem; }
+  .file-status small { font-size: .7rem; }
+  .filters-panel,
+  .filters-panel.filters-expanded { grid-template-columns: 1fr; }
+  .filters-heading,
+  .filters-panel .filter-field.wide,
+  .filters-panel.filters-expanded .filter-field.wide,
+  .filters-panel > .btn { grid-column: auto; }
+  .filters-heading { align-items: center; }
+  .filters-kicker { display: none; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  .kpi-card { min-height: 105px; }
+  .kpi-label { min-height: auto; }
+  .section-heading { display: grid; gap: 7px; }
+  .period-label { width: fit-content; }
+  .card-header { align-items: flex-start; }
+  .card-actions { gap: 5px; }
+  .detail-toolbar { grid-template-columns: 1fr; }
+  .detail-toolbar .search-box,
+  .detail-toolbar label { grid-column: auto; }
+  .quality-grid { grid-template-columns: 1fr 1fr; }
+  .alert-grid { grid-template-columns: 1fr; }
+}
+
+/* TV y pantallas de presentación: más escala sin líneas excesivamente largas. */
+@media (min-width: 1920px) {
+  body { font-size: 18px; }
+  .topbar { min-height: 96px; padding: 15px 32px; }
+  .brand-logo { width: 220px; }
+  .main-layout { grid-template-columns: 260px minmax(0, 1fr); }
+  .sidebar { top: 129px; height: calc(100vh - 129px); padding: 22px 15px; }
+  .nav-item { min-height: 50px; font-size: .9rem; }
+  .main-content { max-width: 2200px; padding: 28px 32px 54px; }
+  .filters-panel { top: 112px; gap: 14px; padding: 17px; }
+  .filter-field select, .filter-field input { height: 46px; font-size: .86rem; }
+  .kpi-grid { gap: 18px; }
+  .kpi-card { min-height: 150px; padding: 20px; }
+  .content-grid { gap: 22px; margin-bottom: 22px; }
+  .card { padding: 22px; }
+  .card-header h3 { font-size: 1.08rem; }
+  .card-header p { font-size: .82rem; }
+  .table-wrap table { font-size: .82rem; }
+}
+
+/* Accesibilidad y equipos táctiles. */
+@media (hover: none), (pointer: coarse) {
+  .btn:hover, .kpi-card:hover { transform: none; }
+  .btn, .nav-item, .icon-btn, select, input { min-height: 44px; }
+  .chart-card .chart-canvas { cursor: default !important; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .topbar { position: static; }
+  .privacy-banner { display: none; }
+  .sidebar { position: static; }
+  .modal-dialog { max-height: 96dvh; }
+  .modal-body { max-height: calc(96dvh - 76px); }
+}
