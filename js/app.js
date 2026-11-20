@@ -69,10 +69,14 @@
     byId('loadedFileName').textContent = dataset.fileName || 'Archivo Excel cargado';
 
     const updateText = `Actualizado: ${formatDateTime(dataset.lastModified || dataset.loadedAt)}`;
-    const sourceText = source === 'data' ? ' · Carga automática desde data' : '';
+    const sourceText = source === 'onedrive'
+      ? ' · Sincronizado desde OneDrive'
+      : source === 'data' ? ' · Respaldo local' : '';
     byId('lastUpdateText').textContent = `${updateText}${sourceText}`;
-    byId('lastUpdateText').title = source === 'data'
-      ? 'Planilla cargada automáticamente desde la carpeta data.'
+    byId('lastUpdateText').title = source === 'onedrive'
+      ? 'Planilla cargada desde la carpeta de OneDrive sincronizada en este computador.'
+      : source === 'data'
+      ? 'Planilla cargada desde el respaldo local de la carpeta data.'
       : updateText;
 
     byId('processedRowsBadge').textContent = `${dataset.quality.processed.toLocaleString('es-CL')} registros`;
@@ -148,8 +152,10 @@
     setLoading(false);
 
     const warnings = dataset.quality.observed;
-    if (source === 'data') {
-      toast('Planilla cargada automáticamente desde la carpeta data.', 'success');
+    if (source === 'data' || source === 'onedrive') {
+      toast(source === 'onedrive'
+        ? 'Planilla actualizada desde OneDrive.'
+        : 'Se utilizó la copia local de respaldo.', 'success');
       if (warnings) {
         toast(`${warnings.toLocaleString('es-CL')} registros presentan observaciones. Revisa “Calidad de datos”.`, 'warning');
       }
@@ -265,6 +271,29 @@
     return dataset;
   }
 
+  async function readWorkbookFromUrl(url, fileName) {
+    if (typeof url !== 'string' || !url.startsWith('/api/')) {
+      throw new Error('La dirección configurada para la fuente en línea no es válida.');
+    }
+    setLoading(true, 8, 'Leyendo la planilla sincronizada desde OneDrive…', 'Actualizando datos');
+    const separator = url.includes('?') ? '&' : '?';
+    const response = await fetch(`${url}${separator}v=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) {
+      const error = new Error(`La fuente sincronizada no está disponible (${response.status}).`);
+      error.httpStatus = response.status;
+      throw error;
+    }
+    const buffer = await response.arrayBuffer();
+    const dataset = await global.ExcelReader.readArrayBuffer(
+      buffer,
+      fileName || 'Planilla planificación diaria Transporte_OV.xlsx',
+      progress
+    );
+    const lastModifiedHeader = response.headers.get('last-modified');
+    dataset.lastModified = lastModifiedHeader ? new Date(lastModifiedHeader) : new Date();
+    return dataset;
+  }
+
   function base64ToArrayBuffer(base64) {
     if (typeof base64 !== 'string' || !base64.trim()) {
       throw new Error('La copia local de la planilla está vacía.');
@@ -324,6 +353,18 @@
 
     if (message) message.textContent = 'Buscando automáticamente una planilla válida en la carpeta data…';
     setLoading(true, 4, 'Revisando la configuración de la carpeta data…', 'Buscando planilla de transporte');
+
+    const config = await readAutoLoadConfig();
+    if (config?.urlExcel) {
+      try {
+        const dataset = await readWorkbookFromUrl(config.urlExcel, config.archivoExcel);
+        await acceptDataset(dataset, { source: 'onedrive' });
+        return true;
+      } catch (error) {
+        console.warn('[Carga OneDrive] No fue posible leer la fuente sincronizada. Se intentará el respaldo local.', error);
+        toast('OneDrive no está disponible; buscando el respaldo local…', 'warning');
+      }
+    }
 
     const candidates = await getAutoLoadCandidates();
     const technicalErrors = [];

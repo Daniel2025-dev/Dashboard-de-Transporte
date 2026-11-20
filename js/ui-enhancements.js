@@ -90,6 +90,36 @@
     });
   }
 
+  function enhanceFilters() {
+    const panel = document.querySelector('.filters-panel');
+    if (!panel || panel.dataset.enhanced === '1') return;
+    panel.dataset.enhanced = '1';
+
+    const heading = document.createElement('div');
+    heading.className = 'filters-heading';
+    heading.innerHTML = '<div><span class="filters-kicker">Segmentación</span><strong>Filtros del análisis</strong></div>';
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'filters-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = 'Más filtros';
+    toggle.addEventListener('click', () => {
+      const expanded = panel.classList.toggle('filters-expanded');
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.textContent = expanded ? 'Menos filtros' : 'Más filtros';
+    });
+    heading.appendChild(toggle);
+    panel.prepend(heading);
+
+    const secondaryIds = new Set(['filterDateFrom', 'filterDateTo', 'filterDestination', 'filterRegion']);
+    panel.querySelectorAll('.filter-field').forEach(field => {
+      if (field.classList.contains('missing-field')) return;
+      const control = field.querySelector('select, input');
+      if (control && secondaryIds.has(control.id)) field.classList.add('filter-secondary');
+    });
+  }
+
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && expandedCard) closeExpanded();
   });
@@ -100,6 +130,7 @@
   });
   observer.observe(document.body, { childList: true, subtree: true });
   addExpandButtons();
+  enhanceFilters();
 
   global.UiEnhancements = { refresh: addExpandButtons, closeExpanded, enhanceInteractiveVisuals };
 })(window);

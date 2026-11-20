@@ -361,11 +361,11 @@
       { label: 'Participación principal', value: top ? C.formatPercent(top.participation,1) : 'N/A', note: 'Según servicios' }
     ]);
     global.Charts.horizontalBars('carrierServicesChart', {
-      items: byServices.map(item => ({ label: item.label, value: item.services, extraTooltip: `Costo: ${C.formatCurrency(item.cost)} · Margen: ${C.formatPercent(item.margin,1)}` })),
+      items: byServices.slice(0, 15).map(item => ({ label: item.label, value: item.services, extraTooltip: `Costo: ${C.formatCurrency(item.cost)} · Margen: ${C.formatPercent(item.margin,1)}` })),
       format: 'number', valueLabel: 'Servicios', color: COLORS.blue, onClick: item => filterRequest?.('carrier', item.label)
     });
     global.Charts.horizontalBars('carrierCostChart', {
-      items: byCost.map(item => ({ label: item.label, value: item.cost, extraTooltip: `Venta asociada: ${C.formatCurrency(item.sale)}` })),
+      items: byCost.slice(0, 15).map(item => ({ label: item.label, value: item.cost, extraTooltip: `Venta asociada: ${C.formatCurrency(item.sale)}` })),
       format: 'currency', valueLabel: 'Costo', color: COLORS.orange, onClick: item => filterRequest?.('carrier', item.label)
     });
     const selectedCarrier = filters.carrier || top?.label;

@@ -2,14 +2,15 @@
   'use strict';
 
   const COLORS = {
-    blue: '#21458f', blueLight: '#7892d3', blueDark: '#102653', orange: '#e95420', orangeLight: '#f28d62',
-    green: '#147a4a', red: '#c62f3d', yellow: '#b97800', gray: '#657084', grid: '#dfe5ee', text: '#263248', white: '#ffffff'
+    blue: '#1b4f91', blueLight: '#73a9df', blueDark: '#0b2f5b', orange: '#f05a28', orangeLight: '#ff9a73',
+    green: '#00a878', red: '#e5484d', yellow: '#d99000', cyan: '#00a8c6', gray: '#64748b',
+    grid: '#e8edf4', text: '#344256', white: '#ffffff'
   };
   const registry = new Map();
   const tooltip = () => document.getElementById('chartTooltip');
-  // v10: los gráficos se mantienen estáticos. El redibujado por hover alteraba
-  // el tamaño del canvas y deformaba la visualización en algunas resoluciones.
-  const STATIC_CHARTS = true;
+  // v11: la precisión vive en el tooltip. Evitamos imprimir todos los valores
+  // simultáneamente para conservar una lectura limpia incluso con 12 meses.
+  const STATIC_CHARTS = false;
 
   function getCanvas(canvasOrId) {
     return typeof canvasOrId === 'string' ? document.getElementById(canvasOrId) : canvasOrId;
@@ -40,7 +41,7 @@
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
-    ctx.font = '12px Inter, Segoe UI, Arial, sans-serif';
+    ctx.font = '12px "Segoe UI", Arial, sans-serif';
     return { ctx, width: cssWidth, height: cssHeight, ratio };
   }
 
@@ -62,7 +63,7 @@
   // para reducir superposiciones sin abreviar cifras.
   function drawDataLabel(ctx, text, x, y, options = {}) {
     if (text === null || text === undefined || text === '') return null;
-    const fontSize = options.fontSize || 9.5;
+    const fontSize = options.fontSize || 11;
     const borderColor = options.borderColor || options.color || COLORS.blue;
     const textColor = options.textColor || '#17243a';
     const background = options.background || 'rgba(255,255,255,.985)';
@@ -116,7 +117,7 @@
       a.bottom + padding <= b.top || a.top >= b.bottom + padding);
   }
 
-  function labelBox(ctx, text, x, y, fontSize = 9.5) {
+  function labelBox(ctx, text, x, y, fontSize = 11) {
     ctx.save();
     ctx.font = `850 ${fontSize}px Inter, Segoe UI, Arial, sans-serif`;
     const width = ctx.measureText(String(text)).width + 10;
@@ -226,10 +227,28 @@
   }
 
   function findHit(state, x, y) {
-    return state?.hits?.find(item => {
-      if (item.type === 'point') return Math.hypot(x - item.x, y - item.y) <= (item.radius || 8);
-      return x >= item.x && x <= item.x + item.w && y >= item.y && y <= item.y + item.h;
-    }) || null;
+    const hits = state?.hits || [];
+    const direct = hits.find(item => {
+      if (item.type === 'point') return Math.hypot(x - item.x, y - item.y) <= (item.radius || 16);
+      const paddingX = item.hitPaddingX ?? 6;
+      const paddingY = item.hitPaddingY ?? 6;
+      return x >= item.x - paddingX && x <= item.x + item.w + paddingX &&
+        y >= item.y - paddingY && y <= item.y + item.h + paddingY;
+    });
+    if (direct) return direct;
+
+    // En gráficos de líneas se toma el punto más cercano dentro de una zona
+    // cómoda. Así no es necesario acertar exactamente en un círculo pequeño.
+    let nearest = null;
+    let nearestDistance = 26;
+    hits.filter(item => item.type === 'point').forEach(item => {
+      const distance = Math.hypot(x - item.x, y - item.y);
+      if (distance < nearestDistance) {
+        nearest = item;
+        nearestDistance = distance;
+      }
+    });
+    return nearest;
   }
 
   function scheduleHoverRender(canvas, key) {
@@ -257,25 +276,36 @@
     }
     tip.innerHTML = hit.tooltip;
     tip.hidden = false;
-    tip.style.left = `${Math.max(8, Math.min(window.innerWidth - 310, clientX + 14))}px`;
-    tip.style.top = `${Math.max(8, Math.min(window.innerHeight - 130, clientY + 14))}px`;
+    const tooltipWidth = Math.min(310, Math.max(170, tip.offsetWidth || 210));
+    const showLeft = clientX + tooltipWidth + 22 > window.innerWidth;
+    tip.style.left = `${Math.max(10, showLeft ? clientX - tooltipWidth - 14 : clientX + 14)}px`;
+    tip.style.top = `${Math.max(10, Math.min(window.innerHeight - 125, clientY + 14))}px`;
   }
 
   function attachInteractions(canvas, chartState) {
     canvas.__chartState = chartState;
+    if (STATIC_CHARTS) return;
+    // Un redibujado por hover actualiza geometría y estado, pero no debe borrar
+    // el elemento activo ni ocultar el tooltip que acaba de abrirse.
+    if (canvas.__chartBound) return;
+
     canvas.__hoverKey = '';
     canvas.classList.remove('is-interacting');
     canvas.style.cursor = 'default';
     const tip = tooltip();
     if (tip) tip.hidden = true;
-    if (STATIC_CHARTS) return;
-    if (canvas.__chartBound) return;
+
+    canvas.style.setProperty('pointer-events', 'auto', 'important');
 
     const handlePointer = event => {
       if (event.pointerType && event.pointerType !== 'mouse' && event.type === 'pointermove') return;
       const state = canvas.__chartState;
       if (!state) return;
       const rect = canvas.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+          event.clientY < rect.top || event.clientY > rect.bottom) {
+        return;
+      }
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const hit = findHit(state, x, y);
@@ -286,17 +316,28 @@
     };
 
     canvas.addEventListener('pointermove', handlePointer);
+    canvas.addEventListener('mousemove', handlePointer);
     canvas.addEventListener('pointerdown', event => {
       if (event.pointerType === 'touch' || event.pointerType === 'pen') handlePointer(event);
     });
 
-    canvas.addEventListener('pointerleave', () => {
+    const clearHover = () => {
       const tip = tooltip();
       if (tip) tip.hidden = true;
       canvas.classList.remove('is-interacting');
       canvas.style.cursor = 'default';
       scheduleHoverRender(canvas, '');
-    });
+    };
+    canvas.addEventListener('pointerleave', clearHover);
+
+    // Respaldo para navegadores o estilos que no entregan eventos al canvas:
+    // la tarjeta completa detecta el mouse y calcula la posición sobre él.
+    const chartCard = canvas.closest('.chart-card');
+    if (chartCard && chartCard.dataset.chartHoverFallback !== '1') {
+      chartCard.addEventListener('mousemove', handlePointer);
+      chartCard.addEventListener('mouseleave', clearHover);
+      chartCard.dataset.chartHoverFallback = '1';
+    }
 
     canvas.addEventListener('click', event => {
       const state = canvas.__chartState;
@@ -312,7 +353,7 @@
 
   function drawLegend(ctx, datasets, hidden, width, hits) {
     let x = 14, y = 15;
-    ctx.font = '700 11px Inter, Segoe UI, Arial, sans-serif';
+    ctx.font = '700 12px "Segoe UI", Arial, sans-serif';
     datasets.forEach((dataset, index) => {
       const labelWidth = ctx.measureText(dataset.label).width;
       const itemWidth = 23 + labelWidth + 14;
@@ -388,17 +429,17 @@
     ctx.font = '10px Inter, Segoe UI, Arial, sans-serif';
     const leftTickWidths = Array.from({ length: 6 }, (_, i) => {
       const value = leftRange.min + (i / 5) * (leftRange.max - leftRange.min);
-      return ctx.measureText(formatValue(value, leftFormat)).width;
+      return ctx.measureText(compactValue(value, leftFormat)).width;
     });
     const rightTickWidths = rightValues.length ? Array.from({ length: 6 }, (_, i) => {
       const value = rightRange.min + (i / 5) * (rightRange.max - rightRange.min);
-      return ctx.measureText(formatValue(value, rightFormat)).width;
+      return ctx.measureText(compactValue(value, rightFormat)).width;
     }) : [0];
     const margin = {
-      left: Math.max(66, Math.min(112, Math.ceil(Math.max(...leftTickWidths)) + 12)),
-      right: rightValues.length ? Math.max(58, Math.min(88, Math.ceil(Math.max(...rightTickWidths)) + 12)) : 24,
-      top: Math.max(88, legendBottom + 28),
-      bottom: 58
+      left: Math.max(58, Math.min(88, Math.ceil(Math.max(...leftTickWidths)) + 12)),
+      right: rightValues.length ? Math.max(50, Math.min(74, Math.ceil(Math.max(...rightTickWidths)) + 12)) : 18,
+      top: Math.max(52, legendBottom + 12),
+      bottom: 48
     };
     const plot = { x: margin.left, y: margin.top, w: width - margin.left - margin.right, h: height - margin.top - margin.bottom };
     const yFor = (value, axis) => {
@@ -407,18 +448,18 @@
     };
 
     ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 1;
-    ctx.font = '10px Inter, Segoe UI, Arial, sans-serif'; ctx.textBaseline = 'middle';
+    ctx.font = '11.5px "Segoe UI", Arial, sans-serif'; ctx.textBaseline = 'middle';
     for (let i = 0; i <= 5; i++) {
       const ratio = i / 5;
       const y = plot.y + plot.h - ratio * plot.h;
       ctx.beginPath(); ctx.moveTo(plot.x, y); ctx.lineTo(plot.x + plot.w, y); ctx.stroke();
       const leftValue = leftRange.min + ratio * (leftRange.max - leftRange.min);
       ctx.fillStyle = COLORS.text; ctx.textAlign = 'right';
-      ctx.fillText(formatValue(leftValue, leftFormat), plot.x - 8, y);
+      ctx.fillText(compactValue(leftValue, leftFormat), plot.x - 8, y);
       if (rightValues.length) {
         const rightValue = rightRange.min + ratio * (rightRange.max - rightRange.min);
         ctx.textAlign = 'left';
-        ctx.fillText(formatValue(rightValue, rightFormat), plot.x + plot.w + 8, y);
+        ctx.fillText(compactValue(rightValue, rightFormat), plot.x + plot.w + 8, y);
       }
     }
     const zeroY = yFor(0, 'left');
@@ -431,10 +472,18 @@
     const occupiedLabels = [];
     const barDatasets = datasets.map((ds, index) => ({ ds, index })).filter(({ ds, index }) => ds.type !== 'line' && !hidden.has(index));
     const barWidth = Math.max(4, Math.min(32, slot * .72 / Math.max(1, barDatasets.length)));
+    const tooltipForIndex = labelIndex => {
+      const rows = datasets.map((dataset, datasetIndex) => {
+        if (hidden.has(datasetIndex)) return '';
+        const value = Number(dataset.data[labelIndex]) || 0;
+        return `<span class="tooltip-series"><i style="background:${dataset.color || COLORS.blue}"></i>${dataset.label}: <b>${formatValue(value, dataset.format)}</b></span>`;
+      }).filter(Boolean).join('');
+      return `<strong>${labels[labelIndex]}</strong>${rows}`;
+    };
 
     labels.forEach((label, labelIndex) => {
       const center = plot.x + slot * labelIndex + slot / 2;
-      ctx.fillStyle = COLORS.text; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = '10px Inter, Segoe UI, Arial, sans-serif';
+      ctx.fillStyle = COLORS.text; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = '11.5px "Segoe UI", Arial, sans-serif';
       const lines = wrapLabel(ctx, label, Math.max(35, slot - 5), 2);
       lines.forEach((line, lineIndex) => ctx.fillText(line, center, plot.y + plot.h + 10 + lineIndex * 12));
 
@@ -455,7 +504,12 @@
           ctx.shadowBlur = 12;
           ctx.shadowOffsetY = 3;
         }
-        ctx.fillRect(x, top, barWidth - 2, h);
+        const renderedWidth = Math.max(2, barWidth - 3);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.beginPath();
+          ctx.roundRect(x, top, renderedWidth, h, Math.min(5, renderedWidth / 2, h / 2));
+          ctx.fill();
+        } else ctx.fillRect(x, top, renderedWidth, h);
         if (isHovered) {
           ctx.shadowColor = 'transparent';
           ctx.strokeStyle = '#ffffff';
@@ -464,7 +518,7 @@
         }
         ctx.restore();
 
-        if (value !== 0 && ds.showDataLabels !== false) {
+        if (value !== 0 && (ds.showDataLabels === true || isHovered)) {
           const labelText = compactLabels ? compactValue(value, ds.format) : dataLabelText(value, ds.format);
           const level = barIndex % 3;
           const labelY = value >= 0
@@ -482,8 +536,8 @@
             top: legendBottom + 4, bottom: plot.y + plot.h - 2
           });
         }
-        hits.push({ key: barKey, type: 'rect', x, y: top, w: barWidth - 2, h, clickable: !!config.onClickLabel,
-          tooltip: `<strong>${label}</strong>${ds.label}: ${formatValue(value, ds.format)}`,
+        hits.push({ key: barKey, type: 'rect', x, y: top, w: barWidth - 2, h, hitPaddingX: Math.max(5, slot * .08), hitPaddingY: 9, clickable: !!config.onClickLabel,
+          tooltip: tooltipForIndex(labelIndex),
           action: config.onClickLabel ? () => config.onClickLabel(label, labelIndex, ds) : null });
       });
     });
@@ -520,8 +574,8 @@
         ctx.strokeStyle = COLORS.white; ctx.lineWidth = isHovered ? 2.2 : 1.6; ctx.stroke();
         ctx.restore();
 
-        const showLineLabel = !compactLabels || isHovered || index % 2 === 0;
-        if (point.value !== 0 && ds.showDataLabels !== false && showLineLabel) {
+        const showLineLabel = ds.showDataLabels === true || isHovered;
+        if (point.value !== 0 && showLineLabel) {
           const offset = 17 + (dsIndex % 3) * 19;
           const labelY = Math.max(plot.y + 12, point.y - offset);
           const horizontalOffset = (index % 2 === 0 ? -1 : 1) * (dsIndex % 2 ? 20 : 0);
@@ -538,8 +592,8 @@
             top: legendBottom + 4, bottom: plot.y + plot.h - 2
           });
         }
-        hits.push({ key: pointKey, type: 'point', x: point.x, y: point.y, radius: 10, clickable: !!config.onClickLabel,
-          tooltip: `<strong>${labels[index]}</strong>${ds.label}: ${formatValue(point.value, ds.format)}`,
+        hits.push({ key: pointKey, type: 'point', x: point.x, y: point.y, radius: 17, clickable: !!config.onClickLabel,
+          tooltip: tooltipForIndex(index),
           action: config.onClickLabel ? () => config.onClickLabel(labels[index], index, ds) : null });
       });
     });
@@ -562,12 +616,12 @@
       canvas.__chartState = { hits: [] }; attachInteractions(canvas, canvas.__chartState); return;
     }
     const hits = [];
-    const maxLabelWidth = Math.min(width * .48, Math.max(105, ...items.map(item => {
-      ctx.font = '11px Inter, Segoe UI, Arial, sans-serif'; return ctx.measureText(item.label).width + 20;
+    const maxLabelWidth = Math.min(width * .40, 220, Math.max(112, ...items.map(item => {
+      ctx.font = '12.5px "Segoe UI", Arial, sans-serif'; return ctx.measureText(item.label).width + 20;
     })));
-    ctx.font = '800 9px Inter, Segoe UI, Arial, sans-serif';
+    ctx.font = '800 11.5px "Segoe UI", Arial, sans-serif';
     const maxValueLabelWidth = Math.max(...items.map(item => ctx.measureText(formatValue(Number(item.value) || 0, config.format)).width));
-    const margin = { left: maxLabelWidth, right: Math.max(78, Math.min(width * .32, maxValueLabelWidth + 18)), top: 16, bottom: 32 };
+    const margin = { left: maxLabelWidth, right: Math.max(84, Math.min(width * .24, maxValueLabelWidth + 20)), top: 12, bottom: 38 };
     const plot = { x: margin.left, y: margin.top, w: Math.max(80, width - margin.left - margin.right), h: height - margin.top - margin.bottom };
     const values = items.map(item => Number(item.value));
     const range = niceRange(values, true);
@@ -580,8 +634,8 @@
       const ratio = i / tickCount; const x = plot.x + ratio * plot.w;
       ctx.beginPath(); ctx.moveTo(x, plot.y); ctx.lineTo(x, plot.y + plot.h); ctx.stroke();
       const value = range.min + ratio * (range.max - range.min);
-      ctx.fillStyle = COLORS.text; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = '700 9.5px Inter, Segoe UI, Arial, sans-serif';
-      ctx.fillText(formatValue(value, config.format), x, plot.y + plot.h + 8);
+      ctx.fillStyle = COLORS.text; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = '650 11px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(compactValue(value, config.format), x, plot.y + plot.h + 9);
     }
 
     items.forEach((item, index) => {
@@ -602,7 +656,11 @@
         ctx.shadowBlur = 12;
         ctx.shadowOffsetY = 2;
       }
-      ctx.fillRect(x, y, w, h);
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, Math.min(6, w / 2, h / 2));
+        ctx.fill();
+      } else ctx.fillRect(x, y, w, h);
       if (isHovered) {
         ctx.shadowColor = 'transparent';
         ctx.strokeStyle = '#ffffff';
@@ -611,15 +669,15 @@
       }
       ctx.restore();
 
-      ctx.fillStyle = COLORS.text; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.font = `${isHovered ? '800' : '650'} 10.5px Inter, Segoe UI, Arial, sans-serif`;
+      ctx.fillStyle = COLORS.text; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.font = `${isHovered ? '750' : '600'} 12.5px "Segoe UI", Arial, sans-serif`;
       const label = item.label.length > 42 ? `${item.label.slice(0, 40)}…` : item.label;
       ctx.fillText(label, plot.x - 8, centerY);
 
       ctx.textAlign = value >= 0 ? 'left' : 'right';
       ctx.fillStyle = barColor;
-      ctx.font = `850 ${isHovered ? 11.5 : 10.7}px Inter, Segoe UI, Arial, sans-serif`;
+      ctx.font = `800 ${isHovered ? 13 : 12}px "Segoe UI", Arial, sans-serif`;
       ctx.fillText(formatValue(value, config.format), value >= 0 ? xValue + 7 : xValue - 7, centerY);
-      hits.push({ key: barKey, type: 'rect', x, y, w: Math.max(w, 4), h, clickable: !!config.onClick,
+      hits.push({ key: barKey, type: 'rect', x: plot.x, y: centerY - rowHeight / 2, w: plot.w, h: rowHeight, hitPaddingX: 4, hitPaddingY: 0, clickable: !!config.onClick,
         tooltip: `<strong>${item.label}</strong>${config.valueLabel || 'Valor'}: ${formatValue(value, config.format)}${item.extraTooltip ? `<br>${item.extraTooltip}` : ''}`,
         action: config.onClick ? () => config.onClick(item, index) : null });
     });
