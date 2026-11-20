@@ -1,6 +1,4 @@
 {
-  "urlExcel": "/api/transport-workbook",
-  "nombreFuente": "OneDrive · CONSOLIDADO_TTE",
   "archivoExcel": "Planilla planificación diaria Transporte_OV.xlsx",
   "hoja": "Plan_Transporte",
   "archivosAlternativos": [

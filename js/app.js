@@ -71,12 +71,12 @@
     const updateText = `Actualizado: ${formatDateTime(dataset.lastModified || dataset.loadedAt)}`;
     const sourceText = source === 'onedrive'
       ? ' · Sincronizado desde OneDrive'
-      : source === 'data' ? ' · Respaldo local' : '';
+      : source === 'data' ? ' · Carga automática desde data' : '';
     byId('lastUpdateText').textContent = `${updateText}${sourceText}`;
     byId('lastUpdateText').title = source === 'onedrive'
       ? 'Planilla cargada desde la carpeta de OneDrive sincronizada en este computador.'
       : source === 'data'
-      ? 'Planilla cargada desde el respaldo local de la carpeta data.'
+      ? 'Planilla cargada automáticamente desde la carpeta data.'
       : updateText;
 
     byId('processedRowsBadge').textContent = `${dataset.quality.processed.toLocaleString('es-CL')} registros`;
@@ -155,7 +155,7 @@
     if (source === 'data' || source === 'onedrive') {
       toast(source === 'onedrive'
         ? 'Planilla actualizada desde OneDrive.'
-        : 'Se utilizó la copia local de respaldo.', 'success');
+        : 'Planilla cargada automáticamente desde la carpeta data.', 'success');
       if (warnings) {
         toast(`${warnings.toLocaleString('es-CL')} registros presentan observaciones. Revisa “Calidad de datos”.`, 'warning');
       }
